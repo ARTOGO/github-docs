@@ -1,0 +1,11 @@
+{
+    "name": "Slack Notification Reusable Module",
+    "description": "A reusable workflow to send Slack notifications for Cloud Build statuses and Pull Request activities. Call this from your main CI/CD workflow.",
+    "iconName": "example-icon",
+    "categories": [
+        "Notifications",
+        "Slack",
+        "CI/CD",
+        "Reusable"
+    ]
+}

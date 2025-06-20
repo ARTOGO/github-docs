@@ -1,0 +1,18 @@
+{
+    "pull_request": {
+      "html_url": "https://github.com/ARTOGO/github-docs/pull/123",
+      "number": 123,
+      "title": "測試 PR 標題",
+      "user": { "login": "mock-user" },
+      "head": { "ref": "feature/mock" },
+      "base": { "ref": "main" },
+      "merged_by": { "login": "approver-user" }
+    },
+    "action": "opened",
+    "repository": {
+      "full_name": "ARTOGO/github-docs"
+    },
+    "sender": {
+      "login": "mock-user"
+    }
+  }

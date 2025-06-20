@@ -1,0 +1,107 @@
+# workflow-templates/notify-slack-reusable.yml
+
+name: Slack Notification Reusable Workflow
+
+on:
+  workflow_call:
+    secrets:
+      SLACK_NOTIFICATION_URL:
+        required: true
+        description: "The Slack Incoming Webhook URL."
+
+jobs:
+  send-slack-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification (Check Run)
+        if: ${{ github.event_name == 'check_run' }}
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_NOTIFICATION_URL }}
+          webhook-type: 'incoming-webhook'
+          payload: |
+            text: "GitHub 事件觸發通知-Check Run"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "*Check Run 狀態更新!*"
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: "*儲存庫:*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.full_name }}>"
+                  - type: "mrkdwn"
+                    text: "*狀態:*\n`${{github.event.check_run.status}}`"
+                  - type: "mrkdwn"
+                    text: "*結果:*\n`${{github.event.check_run.conclusion}}`"
+                  - type: "mrkdwn"
+                    text: "*Check Name:*\n`${{github.event.check_run.name}}`"
+                  - type: "mrkdwn"
+                    text: "*Commit ID:*\n`${{github.event.check_run.check_suite.head_sha}}`"
+              - type: "actions"
+                elements:
+                  - type: "button"
+                    text:
+                      type: "plain_text"
+                      text: "查看 Check Run"
+                    url: "${{github.event.check_run.html_url}}"
+                  - type: "button"
+                    text:
+                      type: "plain_text"
+                      text: "查看外部連結"
+                    url: "${{github.event.check_run.output.annotations_url}}"
+      - name: Set Actor Role
+        id: actor
+        run: |
+          if [[ "${{ github.event.action }}" == "closed" && "${{ github.event.pull_request.merged }}" == "true" ]]; then
+            echo "role=*批准者:*" >> $GITHUB_OUTPUT
+            echo "name=${{ github.event.pull_request.merged_by.login }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.action }}" == "edited" ]]; then
+            echo "role=*更新者:*" >> $GITHUB_OUTPUT
+            echo "name=${{ github.event.sender.login }}" >> $GITHUB_OUTPUT
+          else
+            echo "role=*發動者:*" >> $GITHUB_OUTPUT
+            echo "name=${{ github.event.pull_request.user.login }}" >> $GITHUB_OUTPUT
+          fi
+                  
+      - name: Send Slack Notification (Pull Request)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          webhook: ${{ secrets.SLACK_NOTIFICATION_URL }}
+          webhook-type: 'incoming-webhook'
+          payload: |
+            text: "GitHub 事件觸發通知-Pull Request"
+            blocks:
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: >-
+                    ${{ github.event.action == 'closed'
+                      && format('*{0}* 的 *{1}* 分支 PR 已關閉', github.event.repository.full_name, github.event.pull_request.base.ref)
+                      || github.event.action == 'edited'
+                      && format('*{0}* 的 *{1}* 分支 PR 已更新', github.event.repository.full_name, github.event.pull_request.base.ref)
+                      || format('*收到 {0}* 的 *{1}* 分支 PR!', github.event.repository.full_name, github.event.pull_request.base.ref) }}
+              - type: "section"
+                fields:
+                  - type: "mrkdwn"
+                    text: "*PR 狀態:*\n`${{ github.event.action }}`"
+                  - type: "mrkdwn"
+                    text: "*儲存庫:*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.full_name }}>"
+                  - type: "mrkdwn"
+                    text: "${{ steps.actor.outputs.role }}\n`${{ steps.actor.outputs.name }}`"
+                  - type: "mrkdwn"
+                    text: "*來源分支:*\n`${{ github.event.pull_request.head.ref }}`"
+                  - type: "mrkdwn"
+                    text: "*目標分支:*\n`${{ github.event.pull_request.base.ref }}`"
+                  - type: "mrkdwn"
+                    text: "*Commit ID:*\n`${{ github.event.pull_request.head.sha }}`"
+                  - type: "mrkdwn"
+                    text: "*Commit 訊息:*\n`${{ github.event.pull_request.title }}`"
+              - type: "actions"
+                elements:
+                  - type: "button"
+                    text:
+                      type: "plain_text"
+                      text: "查看 Pull Request"
+                    url: "${{ github.event.pull_request.html_url }}"

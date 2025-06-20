@@ -1,0 +1,23 @@
+{
+    "check_run": {
+      "name": "CI",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/ARTOGO/github-docs/runs/456",
+      "output": {
+        "annotations_url": "https://github.com/ARTOGO/github-docs/runs/456/annotations",
+        "title": "Build",
+        "summary": "All good",
+        "text": "Build passed"
+      },
+      "check_suite": {
+        "head_commit": {
+          "message": "Initial commit",
+          "author": { "name": "mock-user" }
+        }
+      }
+    },
+    "repository": {
+      "full_name": "ARTOGO/github-docs"
+    }
+  }
