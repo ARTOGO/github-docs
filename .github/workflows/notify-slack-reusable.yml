@@ -31,6 +31,8 @@ jobs:
                   - type: "mrkdwn"
                     text: "*儲存庫:*\n<${{ github.event.repository.html_url }}|${{ github.event.repository.full_name }}>"
                   - type: "mrkdwn"
+                    text: "*分支:*\n`${{ github.event.check_run.check_suite.head_branch }}`"
+                  - type: "mrkdwn"
                     text: "*狀態:*\n`${{github.event.check_run.status}}`"
                   - type: "mrkdwn"
                     text: "*結果:*\n`${{github.event.check_run.conclusion}}`"
