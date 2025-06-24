@@ -47,11 +47,6 @@ jobs:
                       type: "plain_text"
                       text: "查看 Check Run"
                     url: "${{github.event.check_run.html_url}}"
-                  - type: "button"
-                    text:
-                      type: "plain_text"
-                      text: "查看外部連結"
-                    url: "${{github.event.check_run.output.annotations_url}}"
       - name: Set Actor Role
         id: actor
         run: |
