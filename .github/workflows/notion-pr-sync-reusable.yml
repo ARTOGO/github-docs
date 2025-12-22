@@ -1,0 +1,245 @@
+name: GitHub PR → Notion Sync (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      pr_action:
+        required: true
+        type: string
+      pr_merged:
+        required: true
+        type: string
+      pr_url:
+        required: true
+        type: string
+      branch_name:
+        required: true
+        type: string
+      event_name:
+        required: true
+        type: string
+      review_state:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      NOTION_API_KEY:
+        required: true
+      NOTION_DATABASE_ID:
+        required: true
+
+jobs:
+  sync-notion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract Task ID from branch
+        id: extract
+        run: |
+          BRANCH="${{ inputs.branch_name }}"
+          echo "Branch: $BRANCH"
+          
+          if [[ $BRANCH =~ (SB-[0-9]+) ]]; then
+            TASK_ID="${BASH_REMATCH[1]}"
+            TASK_NUM=$(echo $TASK_ID | sed 's/SB-//')
+            echo "task_id=$TASK_ID" >> $GITHUB_OUTPUT
+            echo "task_num=$TASK_NUM" >> $GITHUB_OUTPUT
+            echo "Found Task ID: $TASK_ID (num: $TASK_NUM)"
+          else
+            echo "No Task ID found in branch name"
+            echo "task_id=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update Notion page
+        if: steps.extract.outputs.task_id != ''
+        uses: actions/github-script@v7
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          TASK_ID: ${{ steps.extract.outputs.task_id }}
+          TASK_NUM: ${{ steps.extract.outputs.task_num }}
+          PR_URL: ${{ inputs.pr_url }}
+          PR_ACTION: ${{ inputs.pr_action }}
+          PR_MERGED: ${{ inputs.pr_merged }}
+          EVENT_NAME: ${{ inputs.event_name }}
+          REVIEW_STATE: ${{ inputs.review_state }}
+        with:
+          script: |
+            const notionKey = process.env.NOTION_API_KEY;
+            const databaseId = process.env.NOTION_DATABASE_ID;
+            const taskId = process.env.TASK_ID;
+            const taskNum = parseInt(process.env.TASK_NUM);
+            const prUrl = process.env.PR_URL;
+            const prAction = process.env.PR_ACTION;
+            const prMerged = process.env.PR_MERGED === 'true';
+            const eventName = process.env.EVENT_NAME;
+            const reviewState = process.env.REVIEW_STATE;
+            
+            console.log(`Event: ${eventName}, Action: ${prAction}, Review State: ${reviewState}, Merged: ${prMerged}`);
+            
+            // 1. Find the Notion page by Task ID
+            const queryResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${notionKey}`,
+                'Notion-Version': '2022-06-28',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                filter: {
+                  property: 'Task ID',
+                  unique_id: { equals: taskNum }
+                }
+              })
+            });
+            
+            const data = await queryResponse.json();
+            
+            if (!data.results || data.results.length === 0) {
+              console.log(`No page found for Task ID: ${taskId}`);
+              return;
+            }
+            
+            const page = data.results[0];
+            const pageId = page.id;
+            const currentStatus = page.properties['任務狀態']?.status?.name;
+            console.log(`Found page: ${pageId}, Current status: ${currentStatus}`);
+            
+            // 2. Get reviewer and assignee info
+            const techReviewers = page.properties['Tech Reviewer']?.people || [];
+            const funcReviewers = page.properties['Function Reviewer']?.people || [];
+            const assignees = page.properties['指派給']?.people || [];
+            
+            // 3. Determine action based on event type
+            let newStatus = null;
+            let prStatus = null;
+            let notifyUsers = [];
+            let notifyMessage = '';
+            
+            // === Pull Request Review Event ===
+            if (eventName === 'pull_request_review') {
+              if (reviewState === 'changes_requested' || reviewState === 'commented') {
+                // Tech Review 未通過或有 comment 需要回應
+                newStatus = 'DEV IN PROGRESS';
+                notifyUsers = assignees;
+                const reason = reviewState === 'changes_requested' 
+                  ? 'Tech Review 未通過' 
+                  : 'Tech Reviewer 有留言需要回應';
+                notifyMessage = `${reason}，請查看 PR 並進行處理，完成後請點擊 "Re-request review"\n${prUrl}`;
+                console.log(`Tech Review: ${reviewState}`);
+              } else if (reviewState === 'approved') {
+                console.log('Tech Review: Approved - waiting for merge');
+                return;
+              }
+            }
+            // === Pull Request Event ===
+            else if (eventName === 'pull_request') {
+              if (prAction === 'opened' || prAction === 'reopened') {
+                newStatus = 'TECH REVIEW';
+                prStatus = 'Open';
+                notifyUsers = techReviewers;
+                notifyMessage = `PR 已開啟，請進行 Code Review\n${prUrl}`;
+              } else if (prAction === 'review_requested') {
+                // Re-request review：只有當狀態是 DEV IN PROGRESS 時才改狀態
+                if (currentStatus === 'DEV IN PROGRESS') {
+                  newStatus = 'TECH REVIEW';
+                  notifyUsers = techReviewers;
+                  notifyMessage = `開發者已修改完成，請再次進行 Code Review\n${prUrl}`;
+                  console.log('Re-request review detected');
+                } else {
+                  console.log('Re-request review but status is not DEV IN PROGRESS, skipping');
+                  return;
+                }
+              } else if (prAction === 'closed') {
+                if (prMerged) {
+                  newStatus = 'FUNC REVIEW';
+                  prStatus = 'Merged';
+                  notifyUsers = funcReviewers;
+                  notifyMessage = `PR 已合併，請進行功能驗證\n${prUrl}`;
+                } else {
+                  newStatus = 'DEV IN PROGRESS';
+                  prStatus = 'Closed';
+                }
+              }
+            }
+            
+            // 4. Build update properties
+            const updateProps = {};
+            
+            if (prAction === 'opened' || prAction === 'reopened' || prAction === 'closed') {
+              updateProps['GitHub PR'] = { url: prUrl };
+            }
+            
+            if (prStatus) {
+              updateProps['PR Status'] = { select: { name: prStatus } };
+            }
+            
+            if (newStatus) {
+              updateProps['任務狀態'] = { status: { name: newStatus } };
+            }
+            
+            // 5. Update Notion page (if there are changes)
+            if (Object.keys(updateProps).length > 0) {
+              const updateResponse = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${notionKey}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ properties: updateProps })
+              });
+              
+              if (updateResponse.ok) {
+                console.log(`Updated Notion: Status=${newStatus}, PR Status=${prStatus}`);
+              } else {
+                const error = await updateResponse.json();
+                console.error('Failed to update Notion:', error);
+              }
+            }
+            
+            // 6. Add comment to notify (if needed)
+            if (notifyUsers.length > 0 && notifyMessage) {
+              const richText = [];
+              
+              for (let i = 0; i < notifyUsers.length; i++) {
+                const user = notifyUsers[i];
+                richText.push({
+                  type: 'mention',
+                  mention: {
+                    type: 'user',
+                    user: { id: user.id }
+                  }
+                });
+                if (i < notifyUsers.length - 1) {
+                  richText.push({
+                    type: 'text',
+                    text: { content: ' ' }
+                  });
+                }
+              }
+              
+              richText.push({
+                type: 'text',
+                text: { content: ` ${notifyMessage}` }
+              });
+              
+              const commentResponse = await fetch('https://api.notion.com/v1/comments', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${notionKey}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  parent: { page_id: pageId },
+                  rich_text: richText
+                })
+              });
+              
+              if (commentResponse.ok) {
+                console.log(`Comment added, notified: ${notifyUsers.map(u => u.name || u.id).join(', ')}`);
+              } else {
+                const error = await commentResponse.json();
+                console.error('Failed to add comment:', error);
+              }
+            }
