@@ -54,7 +54,12 @@ jobs:
               body: JSON.stringify({
                 filter: {
                   and: [
-                    { property: '任務狀態', status: { equals: 'DEV IN PROGRESS' } },
+                    {
+                      or: [
+                        { property: '任務狀態', status: { equals: 'NOT STARTED' } },
+                        { property: '任務狀態', status: { equals: 'DEV IN PROGRESS' } }
+                      ]
+                    },
                     { property: 'GitHub Branch', rich_text: { is_empty: true } },
                     { property: 'GitHub Repo', select: { equals: repoName } }
                   ]
