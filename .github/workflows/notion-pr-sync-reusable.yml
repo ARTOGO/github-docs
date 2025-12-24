@@ -60,6 +60,7 @@ jobs:
           PR_URL: ${{ inputs.pr_url }}
           PR_ACTION: ${{ inputs.pr_action }}
           PR_MERGED: ${{ inputs.pr_merged }}
+          BRANCH_NAME: ${{ inputs.branch_name }}
           EVENT_NAME: ${{ inputs.event_name }}
           REVIEW_STATE: ${{ inputs.review_state }}
         with:
@@ -71,6 +72,7 @@ jobs:
             const prUrl = process.env.PR_URL;
             const prAction = process.env.PR_ACTION;
             const prMerged = process.env.PR_MERGED === 'true';
+            const branchName = process.env.BRANCH_NAME || '';
             const eventName = process.env.EVENT_NAME;
             const reviewState = process.env.REVIEW_STATE;
             
@@ -154,7 +156,11 @@ jobs:
                   newStatus = 'FUNC REVIEW';
                   prStatus = 'Merged';
                   notifyUsers = funcReviewers;
-                  notifyMessage = `PR 已合併，請進行功能驗證\n${prUrl}`;
+                  if (branchName && branchName.length > 0) {
+                    notifyMessage = `PR 已合併到 ${branchName}，請進行功能驗證\n${prUrl}`;
+                  } else {
+                    notifyMessage = `PR 已合併，請進行功能驗證\n${prUrl}`;
+                  }
                 } else {
                   newStatus = 'DEV IN PROGRESS';
                   prStatus = 'Closed';
