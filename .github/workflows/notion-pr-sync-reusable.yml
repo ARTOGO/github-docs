@@ -22,6 +22,16 @@ on:
         required: false
         type: string
         default: ''
+      review_author_id:
+        description: 'Review 作者的 GitHub user ID'
+        required: false
+        type: string
+        default: ''
+      pr_author_id:
+        description: 'PR 作者的 GitHub user ID'
+        required: false
+        type: string
+        default: ''
     secrets:
       NOTION_API_KEY:
         required: true
@@ -63,6 +73,8 @@ jobs:
           BRANCH_NAME: ${{ inputs.branch_name }}
           EVENT_NAME: ${{ inputs.event_name }}
           REVIEW_STATE: ${{ inputs.review_state }}
+          REVIEW_AUTHOR_ID: ${{ inputs.review_author_id }}
+          PR_AUTHOR_ID: ${{ inputs.pr_author_id }}
         with:
           script: |
             const notionKey = process.env.NOTION_API_KEY;
@@ -75,8 +87,11 @@ jobs:
             const branchName = process.env.BRANCH_NAME || '';
             const eventName = process.env.EVENT_NAME;
             const reviewState = process.env.REVIEW_STATE;
+            const reviewAuthorId = process.env.REVIEW_AUTHOR_ID;
+            const prAuthorId = process.env.PR_AUTHOR_ID;
             
             console.log(`Event: ${eventName}, Action: ${prAction}, Review State: ${reviewState}, Merged: ${prMerged}`);
+            console.log(`Review Author: ${reviewAuthorId}, PR Author: ${prAuthorId}`);
             
             // 1. Find the Notion page by Task ID
             const queryResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
@@ -119,6 +134,13 @@ jobs:
             
             // === Pull Request Review Event ===
             if (eventName === 'pull_request_review') {
+              // 只有非 PR Author 留言才處理
+              if (reviewAuthorId && prAuthorId && reviewAuthorId === prAuthorId) {
+                console.log('⏭️ Review author is same as PR author, skipping notification');
+                return;
+              }
+              
+              // 只有 Reviewer（非 Author）才會執行到這裡
               if (reviewState === 'changes_requested' || reviewState === 'commented') {
                 // Tech Review 未通過或有 comment 需要回應
                 newStatus = 'DEV IN PROGRESS';
