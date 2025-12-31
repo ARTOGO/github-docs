@@ -155,7 +155,7 @@ jobs:
                 const reason = reviewState === 'changes_requested' 
                   ? 'Tech Review 未通過' 
                   : 'Tech Reviewer 有留言需要回應';
-                notifyMessage = `${reason}，請查看 PR 並進行處理，完成後請點擊 "Re-request review"\n${prUrl}`;
+                notifyMessage = `${reason}，請查看 PR 並進行處理，完成後請點擊 "Re-request review"`;
                 console.log(`Tech Review: ${reviewState}`);
               } else if (reviewState === 'approved') {
                 console.log('Tech Review: Approved - waiting for merge');
@@ -168,13 +168,13 @@ jobs:
                 newStatus = 'TECH REVIEW';
                 prStatus = 'Open';
                 notifyUsers = techReviewers;
-                notifyMessage = `PR 已開啟，請進行 Code Review\n${prUrl}`;
+                notifyMessage = `PR 已開啟，請進行 Code Review`;
               } else if (prAction === 'review_requested') {
                 // Re-request review：只有當狀態是 DEV IN PROGRESS 時才改狀態
                 if (currentStatus === 'DEV IN PROGRESS') {
                   newStatus = 'TECH REVIEW';
                   notifyUsers = techReviewers;
-                  notifyMessage = `開發者已修改完成，請再次進行 Code Review\n${prUrl}`;
+                  notifyMessage = `開發者已修改完成，請再次進行 Code Review`;
                   console.log('Re-request review detected');
                 } else {
                   console.log('Re-request review but status is not DEV IN PROGRESS, skipping');
@@ -186,9 +186,9 @@ jobs:
                   prStatus = 'Merged';
                   notifyUsers = funcReviewers;
                   if (baseBranch && baseBranch.length > 0) {
-                    notifyMessage = `PR 已合併到 ${baseBranch}，請進行功能驗證\n${prUrl}`;
+                    notifyMessage = `PR 已合併到 ${baseBranch}，請進行功能驗證`;
                   } else {
-                    notifyMessage = `PR 已合併，請進行功能驗證\n${prUrl}`;
+                    notifyMessage = `PR 已合併，請進行功能驗證`;
                   }
                 } else {
                   newStatus = 'DEV IN PROGRESS';
@@ -236,6 +236,7 @@ jobs:
             if (notifyUsers.length > 0 && notifyMessage) {
               const richText = [];
               
+              // 加入 @ mention
               for (let i = 0; i < notifyUsers.length; i++) {
                 const user = notifyUsers[i];
                 richText.push({
@@ -253,9 +254,19 @@ jobs:
                 }
               }
               
+              // 加入訊息文字
               richText.push({
                 type: 'text',
-                text: { content: ` ${notifyMessage}` }
+                text: { content: ` ${notifyMessage}\n` }
+              });
+              
+              // 加入可點擊的 PR 連結
+              richText.push({
+                type: 'text',
+                text: { 
+                  content: prUrl,
+                  link: { url: prUrl }
+                }
               });
               
               const commentResponse = await fetch('https://api.notion.com/v1/comments', {
