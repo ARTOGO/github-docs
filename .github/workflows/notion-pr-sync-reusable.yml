@@ -12,7 +12,12 @@ on:
       pr_url:
         required: true
         type: string
-      branch_name:
+      head_branch:
+        description: '來源分支（用於提取 Task ID）'
+        required: true
+        type: string
+      base_branch:
+        description: '目標分支（用於顯示合併目標）'
         required: true
         type: string
       event_name:
@@ -45,8 +50,8 @@ jobs:
       - name: Extract Task ID from branch
         id: extract
         run: |
-          BRANCH="${{ inputs.branch_name }}"
-          echo "Branch: $BRANCH"
+          BRANCH="${{ inputs.head_branch }}"
+          echo "Head Branch: $BRANCH"
           
           if [[ $BRANCH =~ (SB-[0-9]+) ]]; then
             TASK_ID="${BASH_REMATCH[1]}"
@@ -70,7 +75,8 @@ jobs:
           PR_URL: ${{ inputs.pr_url }}
           PR_ACTION: ${{ inputs.pr_action }}
           PR_MERGED: ${{ inputs.pr_merged }}
-          BRANCH_NAME: ${{ inputs.branch_name }}
+          HEAD_BRANCH: ${{ inputs.head_branch }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
           EVENT_NAME: ${{ inputs.event_name }}
           REVIEW_STATE: ${{ inputs.review_state }}
           REVIEW_AUTHOR_ID: ${{ inputs.review_author_id }}
@@ -84,7 +90,8 @@ jobs:
             const prUrl = process.env.PR_URL;
             const prAction = process.env.PR_ACTION;
             const prMerged = process.env.PR_MERGED === 'true';
-            const branchName = process.env.BRANCH_NAME || '';
+            const headBranch = process.env.HEAD_BRANCH || '';
+            const baseBranch = process.env.BASE_BRANCH || '';
             const eventName = process.env.EVENT_NAME;
             const reviewState = process.env.REVIEW_STATE;
             const reviewAuthorId = process.env.REVIEW_AUTHOR_ID;
@@ -178,8 +185,8 @@ jobs:
                   newStatus = 'FUNC REVIEW';
                   prStatus = 'Merged';
                   notifyUsers = funcReviewers;
-                  if (branchName && branchName.length > 0) {
-                    notifyMessage = `PR 已合併到 ${branchName}，請進行功能驗證\n${prUrl}`;
+                  if (baseBranch && baseBranch.length > 0) {
+                    notifyMessage = `PR 已合併到 ${baseBranch}，請進行功能驗證\n${prUrl}`;
                   } else {
                     notifyMessage = `PR 已合併，請進行功能驗證\n${prUrl}`;
                   }
