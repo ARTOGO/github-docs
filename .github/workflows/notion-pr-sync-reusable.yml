@@ -37,6 +37,16 @@ on:
         required: false
         type: string
         default: ''
+      staging_review_branches:
+        description: '合併到這些分支時標記為 STAGING FUNC REVIEW（逗號分隔）'
+        required: false
+        type: string
+        default: 'staging'
+      prod_review_branches:
+        description: '合併到這些分支時標記為 PROD FUNCTION REVIEW（逗號分隔）'
+        required: false
+        type: string
+        default: 'main,master'
     secrets:
       NOTION_API_KEY:
         required: true
@@ -81,6 +91,8 @@ jobs:
           REVIEW_STATE: ${{ inputs.review_state }}
           REVIEW_AUTHOR_ID: ${{ inputs.review_author_id }}
           PR_AUTHOR_ID: ${{ inputs.pr_author_id }}
+          STAGING_REVIEW_BRANCHES: ${{ inputs.staging_review_branches }}
+          PROD_REVIEW_BRANCHES: ${{ inputs.prod_review_branches }}
         with:
           script: |
             const notionKey = process.env.NOTION_API_KEY;
@@ -96,6 +108,8 @@ jobs:
             const reviewState = process.env.REVIEW_STATE;
             const reviewAuthorId = process.env.REVIEW_AUTHOR_ID;
             const prAuthorId = process.env.PR_AUTHOR_ID;
+            const stagingBranches = (process.env.STAGING_REVIEW_BRANCHES || 'staging').split(',').map(b => b.trim());
+            const prodBranches = (process.env.PROD_REVIEW_BRANCHES || 'main,master').split(',').map(b => b.trim());
             
             console.log(`Event: ${eventName}, Action: ${prAction}, Review State: ${reviewState}, Merged: ${prMerged}`);
             console.log(`Review Author: ${reviewAuthorId}, PR Author: ${prAuthorId}`);
@@ -130,7 +144,7 @@ jobs:
             
             // 2. Get reviewer and assignee info
             const techReviewers = page.properties['Tech Reviewer']?.people || [];
-            const funcReviewers = page.properties['Function Reviewer']?.people || [];
+            const funcReviewers = page.properties['Func. Reviewer']?.people || [];
             const assignees = page.properties['指派給']?.people || [];
             
             // 3. Determine action based on event type
@@ -182,13 +196,17 @@ jobs:
                 }
               } else if (prAction === 'closed') {
                 if (prMerged) {
-                  newStatus = 'FUNC REVIEW';
                   prStatus = 'Merged';
-                  notifyUsers = funcReviewers;
-                  if (baseBranch && baseBranch.length > 0) {
-                    notifyMessage = `PR 已合併到 ${baseBranch}，請進行功能驗證`;
+                  if (stagingBranches.includes(baseBranch)) {
+                    newStatus = 'STAGING FUNC REVIEW';
+                    notifyUsers = funcReviewers;
+                    notifyMessage = `PR 已合併到 ${baseBranch}，請進行 Staging 功能驗證`;
+                  } else if (prodBranches.includes(baseBranch)) {
+                    newStatus = 'PROD FUNCTION REVIEW';
+                    notifyUsers = funcReviewers;
+                    notifyMessage = `PR 已合併到 ${baseBranch}，請進行 Production 功能驗證`;
                   } else {
-                    notifyMessage = `PR 已合併，請進行功能驗證`;
+                    console.log(`PR merged to ${baseBranch}, not a review branch — only updating PR status`);
                   }
                 } else {
                   newStatus = 'DEV IN PROGRESS';

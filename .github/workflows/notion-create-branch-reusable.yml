@@ -75,7 +75,7 @@ jobs:
               const taskId = taskIdObj?.unique_id ? 
                 `${taskIdObj.unique_id.prefix}-${taskIdObj.unique_id.number}` : null;
               const title = page.properties['項目']?.title?.[0]?.plain_text || 'untitled';
-              const taskType = page.properties['任務類型']?.select?.name || '🔹 TASK';
+              const taskType = page.properties['任務類型']?.multi_select?.[0]?.name || '🔹 TASK';
               
               if (!taskId) {
                 console.log('Skipping page without Task ID');
