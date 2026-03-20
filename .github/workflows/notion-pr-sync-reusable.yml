@@ -140,8 +140,15 @@ jobs:
             const page = data.results[0];
             const pageId = page.id;
             const currentStatus = page.properties['任務狀態']?.status?.name;
-            console.log(`Found page: ${pageId}, Current status: ${currentStatus}`);
-            
+            const cardType = page.properties['Card Type']?.select?.name;
+            console.log(`Found page: ${pageId}, Current status: ${currentStatus}, Card Type: ${cardType}`);
+
+            // 1.5. Only process Repo Execution cards
+            if (cardType !== 'Repo Execution') {
+              console.log(`Skipping: Card Type is "${cardType || 'empty'}", not "Repo Execution"`);
+              return;
+            }
+
             // 2. Get reviewer and assignee info
             const techReviewers = page.properties['Tech Reviewer']?.people || [];
             const funcReviewers = page.properties['Func. Reviewer']?.people || [];

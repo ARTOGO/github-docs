@@ -61,7 +61,8 @@ jobs:
                       ]
                     },
                     { property: 'GitHub Branch', rich_text: { is_empty: true } },
-                    { property: 'GitHub Repo', select: { equals: repoName } }
+                    { property: 'GitHub Repo', select: { equals: repoName } },
+                    { property: 'Card Type', select: { equals: 'Repo Execution' } }
                   ]
                 }
               })
@@ -185,7 +186,8 @@ jobs:
                 filter: {
                   and: [
                     { property: '任務狀態', status: { equals: 'FUNC REVIEW FAILED' } },
-                    { property: 'GitHub Repo', select: { equals: repoName } }
+                    { property: 'GitHub Repo', select: { equals: repoName } },
+                    { property: 'Card Type', select: { equals: 'Repo Execution' } }
                   ]
                 }
               })
