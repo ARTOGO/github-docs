@@ -1,0 +1,155 @@
+name: Review Fix Task Auto-Creator
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  create-fix-tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Fix Tasks for Review Issues
+        uses: actions/github-script@v7
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          REVIEW_ISSUE_DB_ID: ${{ secrets.REVIEW_ISSUE_DB_ID }}
+          FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
+        with:
+          script: |
+            const notionKey = process.env.NOTION_API_KEY;
+            const reviewIssueDbId = process.env.REVIEW_ISSUE_DB_ID;
+            const fixTaskDbId = process.env.FIX_TASK_DB_ID;
+
+            async function notionRequest(endpoint, method = 'GET', body = null) {
+              const options = {
+                method,
+                headers: {
+                  'Authorization': `Bearer ${notionKey}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json'
+                }
+              };
+              if (body) options.body = JSON.stringify(body);
+              const res = await fetch(`https://api.notion.com/v1${endpoint}`, options);
+              if (!res.ok) {
+                const err = await res.json();
+                console.error(`Notion API error: ${endpoint}`, err);
+                return null;
+              }
+              return res.json();
+            }
+
+            // 1. Query Review Issues: 修復者 assigned + status Open
+            const issues = await notionRequest(`/databases/${reviewIssueDbId}/query`, 'POST', {
+              filter: {
+                and: [
+                  { property: '修復者', people: { is_not_empty: true } },
+                  { property: '狀態', status: { equals: 'Open' } }
+                ]
+              }
+            });
+
+            if (!issues) {
+              console.error('Failed to query Review Issue DB');
+              return;
+            }
+
+            console.log(`Found ${issues.results?.length || 0} Review Issues needing Fix Tasks`);
+
+            for (const issue of issues.results || []) {
+              const issueId = issue.id;
+              const issueTitle = issue.properties['問題描述']?.title?.[0]?.plain_text || 'untitled';
+              const fixers = issue.properties['修復者']?.people || [];
+              const sprintBacklogRelation = issue.properties['Sprint Backlog']?.relation || [];
+
+              // Check if Fix Tasks already exist via relation
+              const existingFixTasks = issue.properties['🔧 Fix Tasks']?.relation || [];
+              if (existingFixTasks.length > 0) {
+                console.log(`Skip: "${issueTitle}" — already has ${existingFixTasks.length} Fix Task(s)`);
+                continue;
+              }
+
+              if (sprintBacklogRelation.length === 0) {
+                console.log(`Skip: "${issueTitle}" — no Sprint Backlog card linked`);
+                continue;
+              }
+
+              console.log(`Processing: "${issueTitle}"`);
+              let fixTaskCreated = false;
+
+              // 2. For each linked Sprint Backlog card, create a Fix Task
+              for (const sbRef of sprintBacklogRelation) {
+                const sbPage = await notionRequest(`/pages/${sbRef.id}`);
+                if (!sbPage) continue;
+
+                const cardType = sbPage.properties?.['Card Type']?.select?.name;
+                const githubRepo = sbPage.properties?.['GitHub Repo']?.select?.name;
+
+                if (cardType !== 'Repo Execution') {
+                  console.log(`  Skip SB card ${sbRef.id}: Card Type is "${cardType || 'empty'}"`);
+                  continue;
+                }
+
+                if (!githubRepo) {
+                  console.log(`  Skip SB card ${sbRef.id}: no GitHub Repo`);
+                  continue;
+                }
+
+                console.log(`  Creating Fix Task for repo: ${githubRepo}`);
+
+                // 3. Create Fix Task
+                const fixTask = await notionRequest('/pages', 'POST', {
+                  parent: { database_id: fixTaskDbId },
+                  properties: {
+                    '修復項目': { title: [{ text: { content: `[${githubRepo}] ${issueTitle}` } }] },
+                    'Review Issue': { relation: [{ id: issueId }] },
+                    'Repo Execution': { relation: [{ id: sbRef.id }] },
+                    'GitHub Repo': { select: { name: githubRepo } },
+                    '修復者': { people: fixers.map(f => ({ id: f.id })) }
+                  }
+                });
+
+                if (fixTask) {
+                  const fixTaskId = fixTask.properties?.['Fix Task ID']?.unique_id;
+                  const fixId = fixTaskId ? `${fixTaskId.prefix}-${fixTaskId.number}` : fixTask.id;
+                  console.log(`  Fix Task created: ${fixId}`);
+                  fixTaskCreated = true;
+                }
+              }
+
+              if (!fixTaskCreated) {
+                console.log(`  No Fix Task created for "${issueTitle}" — skipping status update`);
+                continue;
+              }
+
+              // 4. Update Review Issue status → Fixing
+              await notionRequest(`/pages/${issueId}`, 'PATCH', {
+                properties: {
+                  '狀態': { status: { name: 'Fixing' } }
+                }
+              });
+
+              // 5. Notify fixers via comment
+              const richText = [];
+              for (let i = 0; i < fixers.length; i++) {
+                richText.push({
+                  type: 'mention',
+                  mention: { type: 'user', user: { id: fixers[i].id } }
+                });
+                if (i < fixers.length - 1) {
+                  richText.push({ type: 'text', text: { content: ' ' } });
+                }
+              }
+              richText.push({
+                type: 'text',
+                text: { content: ` 已自動建立 Fix Task，請進行修復` }
+              });
+
+              await notionRequest('/comments', 'POST', {
+                parent: { page_id: issueId },
+                rich_text: richText
+              });
+
+              console.log(`  Review Issue → Fixing, fixers notified`);
+            }
