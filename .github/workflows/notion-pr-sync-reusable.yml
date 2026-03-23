@@ -152,6 +152,7 @@ jobs:
             // 2. Get reviewer and assignee info
             const techReviewers = page.properties['Tech Reviewer']?.people || [];
             const funcReviewers = page.properties['Func. Reviewer']?.people || [];
+            const developers = page.properties['Developer']?.people || [];
             const assignees = page.properties['指派給']?.people || [];
             
             // 3. Determine action based on event type
@@ -172,7 +173,7 @@ jobs:
               if (reviewState === 'changes_requested' || reviewState === 'commented') {
                 // Tech Review 未通過或有 comment 需要回應
                 newStatus = 'DEV IN PROGRESS';
-                notifyUsers = assignees;
+                notifyUsers = developers.length > 0 ? developers : assignees;
                 const reason = reviewState === 'changes_requested' 
                   ? 'Tech Review 未通過' 
                   : 'Tech Reviewer 有留言需要回應';
