@@ -201,36 +201,40 @@ jobs:
             
             for (const page of failedData.results || []) {
               const taskIdObj = page.properties['Task ID'];
-              const taskId = taskIdObj?.unique_id ? 
+              const taskId = taskIdObj?.unique_id ?
                 `${taskIdObj.unique_id.prefix}-${taskIdObj.unique_id.number}` : null;
               const title = page.properties['項目']?.title?.[0]?.plain_text || 'untitled';
+              const developers = page.properties['Developer']?.people || [];
               const assignees = page.properties['指派給']?.people || [];
               const prUrl = page.properties['GitHub PR']?.url || '';
-              
+
+              // 優先通知 Developer，fallback 到指派給
+              const notifyUsers = developers.length > 0 ? developers : assignees;
+
               console.log(`Processing failed review: ${taskId} - ${title}`);
-              
-              // 發送通知給開發者
-              if (assignees.length > 0) {
+
+              // 發送通知給 Developer
+              if (notifyUsers.length > 0) {
                 const richText = [];
-                
-                for (let i = 0; i < assignees.length; i++) {
+
+                for (let i = 0; i < notifyUsers.length; i++) {
                   richText.push({
                     type: 'mention',
                     mention: {
                       type: 'user',
-                      user: { id: assignees[i].id }
+                      user: { id: notifyUsers[i].id }
                     }
                   });
-                  if (i < assignees.length - 1) {
+                  if (i < notifyUsers.length - 1) {
                     richText.push({ type: 'text', text: { content: ' ' } });
                   }
                 }
-                
+
                 richText.push({
                   type: 'text',
                   text: { content: ` Function Review 未通過，請進行調整後重新開 PR\n原 PR: ${prUrl}` }
                 });
-                
+
                 const commentResponse = await fetch('https://api.notion.com/v1/comments', {
                   method: 'POST',
                   headers: {
@@ -243,16 +247,27 @@ jobs:
                     rich_text: richText
                   })
                 });
-                
+
                 if (commentResponse.ok) {
-                  console.log(`Notified assignees: ${assignees.map(u => u.name || u.id).join(', ')}`);
+                  console.log(`Notified developers: ${notifyUsers.map(u => u.name || u.id).join(', ')}`);
                 } else {
                   const error = await commentResponse.json();
                   console.error('Failed to add comment:', error);
                 }
               }
-              
-              // 把狀態改回 DEV IN PROGRESS，清空 PR 相關欄位
+
+              // 把狀態改回 DEV IN PROGRESS，指派給改為 Developer，清空 PR 相關欄位
+              const updateProps = {
+                '任務狀態': { status: { name: 'DEV IN PROGRESS' } },
+                'PR Status': { select: null },
+                'GitHub PR': { url: null }
+              };
+
+              // 把指派給改為 Developer
+              if (developers.length > 0) {
+                updateProps['指派給'] = { people: developers.map(d => ({ id: d.id })) };
+              }
+
               await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
                 method: 'PATCH',
                 headers: {
@@ -260,16 +275,10 @@ jobs:
                   'Notion-Version': '2022-06-28',
                   'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                  properties: {
-                    '任務狀態': { status: { name: 'DEV IN PROGRESS' } },
-                    'PR Status': { select: null },
-                    'GitHub PR': { url: null }
-                  }
-                })
+                body: JSON.stringify({ properties: updateProps })
               });
-              
-              console.log(`Reset status to DEV IN PROGRESS: ${taskId}`);
+
+              console.log(`Reset status to DEV IN PROGRESS, assigned to Developer: ${taskId}`);
             }
 
             // ========================================
