@@ -34,6 +34,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_NAME: ${{ inputs.repo_name }}
+          FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
         with:
           script: |
             const notionKey = process.env.NOTION_API_KEY;
