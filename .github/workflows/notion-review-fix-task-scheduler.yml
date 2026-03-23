@@ -78,34 +78,51 @@ jobs:
               console.log(`Processing: "${issueTitle}"`);
               let fixTaskCreated = false;
 
-              // 2. For each linked Sprint Backlog card, create a Fix Task
+              // 2. Collect all Repo Execution cards (expand Feature Hub → Sub-items)
+              const repoExecutionCards = [];
               for (const sbRef of sprintBacklogRelation) {
                 const sbPage = await notionRequest(`/pages/${sbRef.id}`);
                 if (!sbPage) continue;
 
                 const cardType = sbPage.properties?.['Card Type']?.select?.name;
-                const githubRepo = sbPage.properties?.['GitHub Repo']?.select?.name;
 
-                if (cardType !== 'Repo Execution') {
+                if (cardType === 'Repo Execution') {
+                  const githubRepo = sbPage.properties?.['GitHub Repo']?.select?.name;
+                  if (githubRepo) {
+                    repoExecutionCards.push({ id: sbRef.id, repo: githubRepo });
+                  } else {
+                    console.log(`  Skip SB card ${sbRef.id}: no GitHub Repo`);
+                  }
+                } else if (cardType === 'Feature Hub') {
+                  // Expand Feature Hub → find all Sub-item (Repo Execution children)
+                  console.log(`  Expanding Feature Hub: ${sbRef.id}`);
+                  const subItems = sbPage.properties?.['Sub-item']?.relation || [];
+                  for (const subRef of subItems) {
+                    const subPage = await notionRequest(`/pages/${subRef.id}`);
+                    if (!subPage) continue;
+                    const subCardType = subPage.properties?.['Card Type']?.select?.name;
+                    const subRepo = subPage.properties?.['GitHub Repo']?.select?.name;
+                    if (subCardType === 'Repo Execution' && subRepo) {
+                      repoExecutionCards.push({ id: subRef.id, repo: subRepo });
+                      console.log(`    Found child Repo Execution: ${subRepo}`);
+                    }
+                  }
+                } else {
                   console.log(`  Skip SB card ${sbRef.id}: Card Type is "${cardType || 'empty'}"`);
-                  continue;
                 }
+              }
 
-                if (!githubRepo) {
-                  console.log(`  Skip SB card ${sbRef.id}: no GitHub Repo`);
-                  continue;
-                }
+              // 3. Create Fix Task for each Repo Execution card
+              for (const reCard of repoExecutionCards) {
+                console.log(`  Creating Fix Task for repo: ${reCard.repo}`);
 
-                console.log(`  Creating Fix Task for repo: ${githubRepo}`);
-
-                // 3. Create Fix Task
                 const fixTask = await notionRequest('/pages', 'POST', {
                   parent: { database_id: fixTaskDbId },
                   properties: {
-                    '修復項目': { title: [{ text: { content: `[${githubRepo}] ${issueTitle}` } }] },
+                    '修復項目': { title: [{ text: { content: `[${reCard.repo}] ${issueTitle}` } }] },
                     'Review Issue': { relation: [{ id: issueId }] },
-                    'Repo Execution': { relation: [{ id: sbRef.id }] },
-                    'GitHub Repo': { select: { name: githubRepo } },
+                    'Repo Execution': { relation: [{ id: reCard.id }] },
+                    'GitHub Repo': { select: { name: reCard.repo } },
                     '修復者': { people: fixers.map(f => ({ id: f.id })) }
                   }
                 });
