@@ -281,11 +281,9 @@ jobs:
                 }
               }
 
-              // 把狀態改回 DEV IN PROGRESS，指派給改為 Developer，清空 PR 相關欄位
+              // 把狀態改回 DEV IN PROGRESS，指派給改為 Developer（保留 PR 欄位供參考）
               const updateProps = {
-                '任務狀態': { status: { name: 'DEV IN PROGRESS' } },
-                'PR Status': { select: null },
-                'GitHub PR': { url: null }
+                '任務狀態': { status: { name: 'DEV IN PROGRESS' } }
               };
 
               // 把指派給改為 Developer
@@ -389,11 +387,9 @@ jobs:
                   });
                 }
 
-                // Reset child: DEV IN PROGRESS, assign Developer, clear PR
+                // Reset child: DEV IN PROGRESS, assign Developer（保留 PR 欄位供參考）
                 const childUpdateProps = {
-                  '任務狀態': { status: { name: 'DEV IN PROGRESS' } },
-                  'PR Status': { select: null },
-                  'GitHub PR': { url: null }
+                  '任務狀態': { status: { name: 'DEV IN PROGRESS' } }
                 };
                 if (subDevelopers.length > 0) {
                   childUpdateProps['指派給'] = { people: subDevelopers.map(d => ({ id: d.id })) };
@@ -426,6 +422,71 @@ jobs:
                 })
               });
               console.log(`Feature Hub ${hubTaskId} reset to DEV IN PROGRESS`);
+            }
+
+            // --- Feature Hub DONE / ABANDONED cascade（只處理近 30 分鐘內變更的）---
+            console.log('=== 功能 2c：Feature Hub DONE/ABANDONED cascade ===');
+            const recentThreshold = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+            for (const cascadeStatus of ['DONE', 'ABANDONED']) {
+              const cascadeQuery = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${notionKey}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  filter: {
+                    and: [
+                      { property: '任務狀態', status: { equals: cascadeStatus } },
+                      { property: 'Card Type', select: { equals: 'Feature Hub' } },
+                      { timestamp: 'last_edited_time', last_edited_time: { after: recentThreshold } }
+                    ]
+                  }
+                })
+              });
+
+              const cascadeData = await cascadeQuery.json();
+              if ((cascadeData.results?.length || 0) > 0) {
+                console.log(`[${cascadeStatus}] Found ${cascadeData.results.length} recently changed Feature Hubs`);
+              }
+
+              for (const hub of cascadeData.results || []) {
+                const subItems = hub.properties['Sub-item']?.relation || [];
+                const hubTaskIdObj = hub.properties['Task ID'];
+                const hubId = hubTaskIdObj?.unique_id ?
+                  `${hubTaskIdObj.unique_id.prefix}-${hubTaskIdObj.unique_id.number}` : hub.id;
+
+                for (const subRef of subItems) {
+                  const subRes = await fetch(`https://api.notion.com/v1/pages/${subRef.id}`, {
+                    headers: {
+                      'Authorization': `Bearer ${notionKey}`,
+                      'Notion-Version': '2022-06-28'
+                    }
+                  });
+                  if (!subRes.ok) continue;
+                  const subPage = await subRes.json();
+                  const subCardType = subPage.properties?.['Card Type']?.select?.name;
+                  if (subCardType !== 'Repo Execution') continue;
+                  const subStatus = subPage.properties?.['任務狀態']?.status?.name;
+
+                  if (subStatus !== cascadeStatus) {
+                    console.log(`  ${hubId}: cascading ${cascadeStatus} to child ${subRef.id}`);
+                    await fetch(`https://api.notion.com/v1/pages/${subRef.id}`, {
+                      method: 'PATCH',
+                      headers: {
+                        'Authorization': `Bearer ${notionKey}`,
+                        'Notion-Version': '2022-06-28',
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({
+                        properties: { '任務狀態': { status: { name: cascadeStatus } } }
+                      })
+                    });
+                  }
+                }
+              }
             }
 
             // ========================================
