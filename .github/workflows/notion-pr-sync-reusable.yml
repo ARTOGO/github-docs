@@ -192,7 +192,7 @@ jobs:
               }
 
               if (!found) {
-                console.log(`Feature Hub has no child Repo Execution for ${repoName}, skipping`);
+                console.warn(`⚠️ Feature Hub ${pageId} has no child Repo Execution for repo "${repoName}" — PR sync skipped. Check Sub-item relations.`);
                 return;
               }
             } else if (cardType !== 'Repo Execution') {
@@ -202,11 +202,22 @@ jobs:
 
             const currentStatus = page.properties['任務狀態']?.status?.name;
 
-            // 2. People
-            const techReviewers = page.properties['Tech Reviewer']?.people || [];
-            const funcReviewers = page.properties['Func. Reviewer']?.people || [];
+            // 2. People (inherit from Feature Hub if child has none)
+            let techReviewers = page.properties['Tech Reviewer']?.people || [];
+            let funcReviewers = page.properties['Func. Reviewer']?.people || [];
             const developers = page.properties['Developer']?.people || [];
             const assignees = page.properties['指派給']?.people || [];
+
+            if (featureHubPage) {
+              if (funcReviewers.length === 0) {
+                funcReviewers = featureHubPage.properties['Func. Reviewer']?.people || [];
+                if (funcReviewers.length > 0) console.log(`Inherited Func. Reviewer from Feature Hub`);
+              }
+              if (techReviewers.length === 0) {
+                techReviewers = featureHubPage.properties['Tech Reviewer']?.people || [];
+                if (techReviewers.length > 0) console.log(`Inherited Tech Reviewer from Feature Hub`);
+              }
+            }
 
             // 3. Determine action
             let newStatus = null;
@@ -306,8 +317,12 @@ jobs:
                 console.log(`Checking Feature Hub rollup for: ${hubPage.id}`);
                 const allChildren = hubPage.properties?.['Sub-item']?.relation || [];
                 const statusRank = {
+                  'NOT STARTED': 0, 'PENDING': 1, 'UI DESIGN': 2,
+                  'IN PROGRESS': 3, 'DEV IN PROGRESS': 3,
+                  'TECH REVIEW': 4, 'FUNC REVIEW FAILED': 3,
                   'STAGING FUNC REVIEW': 6, 'PROD FUNCTION REVIEW': 7,
-                  'DEPLOY PENDING': 8, 'PHASED DONE': 9, 'DONE': 10
+                  'DEPLOY PENDING': 8, 'PHASED DONE': 9, 'DONE': 10,
+                  'ABANDONED': 10
                 };
                 const targetRank = statusRank[newStatus] || 0;
 
