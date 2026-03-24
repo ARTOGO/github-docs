@@ -15,6 +15,7 @@ jobs:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           REVIEW_ISSUE_DB_ID: ${{ secrets.REVIEW_ISSUE_DB_ID }}
           FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
+          SPRINT_BACKLOG_DB_ID: ${{ secrets.NOTION_DATABASE_ID }}
         with:
           script: |
             const notionKey = process.env.NOTION_API_KEY;
@@ -169,4 +170,101 @@ jobs:
               });
 
               console.log(`  Review Issue → Fixing, fixers notified`);
+            }
+
+            // ========================================
+            // 功能 2：Feature Hub 狀態 cascade
+            // ========================================
+            const sprintDbId = process.env.SPRINT_BACKLOG_DB_ID;
+            if (!sprintDbId) {
+              console.log('=== 功能 2：跳過（SPRINT_BACKLOG_DB_ID 未設定）===');
+            } else {
+              console.log('=== 功能 2：Feature Hub 狀態 cascade ===');
+
+              // --- 2a: FUNC REVIEW FAILED cascade ---
+              const failedHubs = await notionRequest(`/databases/${sprintDbId}/query`, 'POST', {
+                filter: {
+                  and: [
+                    { property: '任務狀態', status: { equals: 'FUNC REVIEW FAILED' } },
+                    { property: 'Card Type', select: { equals: 'Feature Hub' } }
+                  ]
+                }
+              });
+
+              console.log(`[FUNC REVIEW FAILED] Found ${failedHubs?.results?.length || 0} Feature Hubs`);
+
+              for (const hub of failedHubs?.results || []) {
+                const hubTaskIdObj = hub.properties['Task ID'];
+                const hubTaskId = hubTaskIdObj?.unique_id ?
+                  `${hubTaskIdObj.unique_id.prefix}-${hubTaskIdObj.unique_id.number}` : hub.id;
+                const hubTitle = hub.properties['項目']?.title?.[0]?.plain_text || 'untitled';
+                console.log(`Processing Feature Hub: ${hubTaskId} - ${hubTitle}`);
+
+                const subItems = hub.properties['Sub-item']?.relation || [];
+                for (const subRef of subItems) {
+                  const subPage = await notionRequest(`/pages/${subRef.id}`);
+                  if (!subPage) continue;
+                  if (subPage.properties?.['Card Type']?.select?.name !== 'Repo Execution') continue;
+
+                  const subDevelopers = subPage.properties['Developer']?.people || [];
+                  const subAssignees = subPage.properties['指派給']?.people || [];
+                  const subPrUrl = subPage.properties['GitHub PR']?.url || '';
+                  const subNotifyUsers = subDevelopers.length > 0 ? subDevelopers : subAssignees;
+
+                  // Notify Developer
+                  if (subNotifyUsers.length > 0) {
+                    const richText = [];
+                    for (let i = 0; i < subNotifyUsers.length; i++) {
+                      richText.push({ type: 'mention', mention: { type: 'user', user: { id: subNotifyUsers[i].id } } });
+                      if (i < subNotifyUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                    }
+                    richText.push({ type: 'text', text: { content: ` Feature Hub「${hubTitle}」Function Review 未通過，請進行調整\n原 PR: ${subPrUrl}` } });
+                    await notionRequest('/comments', 'POST', { parent: { page_id: subRef.id }, rich_text: richText });
+                  }
+
+                  // Reset child status + assign Developer
+                  const childProps = { '任務狀態': { status: { name: 'DEV IN PROGRESS' } } };
+                  if (subDevelopers.length > 0) {
+                    childProps['指派給'] = { people: subDevelopers.map(d => ({ id: d.id })) };
+                  }
+                  await notionRequest(`/pages/${subRef.id}`, 'PATCH', { properties: childProps });
+                  console.log(`  Child reset: ${subRef.id}`);
+                }
+
+                // Reset Hub itself
+                await notionRequest(`/pages/${hub.id}`, 'PATCH', {
+                  properties: { '任務狀態': { status: { name: 'DEV IN PROGRESS' } } }
+                });
+                console.log(`  Hub ${hubTaskId} → DEV IN PROGRESS`);
+              }
+
+              // --- 2b: DONE / ABANDONED cascade（近 30 分鐘內變更的）---
+              const recentThreshold = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+              for (const cascadeStatus of ['DONE', 'ABANDONED']) {
+                const hubs = await notionRequest(`/databases/${sprintDbId}/query`, 'POST', {
+                  filter: {
+                    and: [
+                      { property: '任務狀態', status: { equals: cascadeStatus } },
+                      { property: 'Card Type', select: { equals: 'Feature Hub' } },
+                      { timestamp: 'last_edited_time', last_edited_time: { after: recentThreshold } }
+                    ]
+                  }
+                });
+
+                for (const hub of hubs?.results || []) {
+                  const subItems = hub.properties['Sub-item']?.relation || [];
+                  for (const subRef of subItems) {
+                    const subPage = await notionRequest(`/pages/${subRef.id}`);
+                    if (!subPage) continue;
+                    if (subPage.properties?.['Card Type']?.select?.name !== 'Repo Execution') continue;
+                    if (subPage.properties?.['任務狀態']?.status?.name === cascadeStatus) continue;
+
+                    await notionRequest(`/pages/${subRef.id}`, 'PATCH', {
+                      properties: { '任務狀態': { status: { name: cascadeStatus } } }
+                    });
+                    console.log(`  Cascaded ${cascadeStatus} to ${subRef.id}`);
+                  }
+                }
+              }
             }

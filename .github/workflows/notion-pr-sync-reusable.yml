@@ -230,21 +230,30 @@ jobs:
                 console.log('⏭️ Review author = PR author, skipping');
                 return;
               }
-              if (reviewState === 'changes_requested' || reviewState === 'commented') {
+              if (reviewState === 'changes_requested') {
                 newStatus = 'DEV IN PROGRESS';
                 notifyUsers = developers.length > 0 ? developers : assignees;
-                const reason = reviewState === 'changes_requested' ? 'Tech Review 未通過' : 'Tech Reviewer 有留言需要回應';
-                notifyMessage = `${reason}，請查看 PR 並進行處理，完成後請點擊 "Re-request review"`;
+                notifyMessage = 'Tech Review 未通過，請查看 PR 並進行處理，完成後請點擊 "Re-request review"';
+              } else if (reviewState === 'commented') {
+                // 留言不改狀態，只通知 Developer
+                notifyUsers = developers.length > 0 ? developers : assignees;
+                notifyMessage = 'Tech Reviewer 有留言需要回應，請查看 PR';
               } else if (reviewState === 'approved') {
                 console.log('Approved — waiting for merge');
                 return;
               }
             } else if (eventName === 'pull_request') {
               if (prAction === 'opened' || prAction === 'reopened') {
-                newStatus = 'TECH REVIEW';
                 prStatus = 'Open';
-                notifyUsers = techReviewers;
-                notifyMessage = 'PR 已開啟，請進行 Code Review';
+                // 防止狀態倒退：已進入 STAGING 以上的卡片不該被打回 TECH REVIEW
+                const noBackwardStatuses = ['STAGING FUNC REVIEW', 'PROD FUNCTION REVIEW', 'DONE', 'ABANDONED', 'DEPLOY PENDING', 'PHASED DONE'];
+                if (noBackwardStatuses.includes(currentStatus)) {
+                  console.log(`Status ${currentStatus} is beyond TECH REVIEW, only updating PR fields`);
+                } else {
+                  newStatus = 'TECH REVIEW';
+                  notifyUsers = techReviewers;
+                  notifyMessage = 'PR 已開啟，請進行 Code Review';
+                }
               } else if (prAction === 'review_requested') {
                 if (currentStatus === 'DEV IN PROGRESS') {
                   newStatus = 'TECH REVIEW';
