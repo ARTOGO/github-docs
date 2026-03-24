@@ -230,14 +230,11 @@ jobs:
                 console.log('⏭️ Review author = PR author, skipping');
                 return;
               }
-              if (reviewState === 'changes_requested') {
+              if (reviewState === 'changes_requested' || reviewState === 'commented') {
                 newStatus = 'DEV IN PROGRESS';
                 notifyUsers = developers.length > 0 ? developers : assignees;
-                notifyMessage = 'Tech Review 未通過，請查看 PR 並進行處理，完成後請點擊 "Re-request review"';
-              } else if (reviewState === 'commented') {
-                // 留言不改狀態，只通知 Developer
-                notifyUsers = developers.length > 0 ? developers : assignees;
-                notifyMessage = 'Tech Reviewer 有留言需要回應，請查看 PR';
+                const reason = reviewState === 'changes_requested' ? 'Tech Review 未通過' : 'Tech Reviewer 有留言需要回應';
+                notifyMessage = `${reason}，請查看 PR 並進行處理，完成後請點擊 "Re-request review"`;
               } else if (reviewState === 'approved') {
                 console.log('Approved — waiting for merge');
                 return;
