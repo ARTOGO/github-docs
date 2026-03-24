@@ -162,16 +162,45 @@ jobs:
               return;
             }
 
-            const page = data.results[0];
-            const pageId = page.id;
-            const currentStatus = page.properties['任務狀態']?.status?.name;
+            let page = data.results[0];
+            let pageId = page.id;
+            const currentStatusRaw = page.properties['任務狀態']?.status?.name;
             const cardType = page.properties['Card Type']?.select?.name;
-            console.log(`Found: ${pageId}, Status: ${currentStatus}, Card Type: ${cardType}`);
+            let featureHubPage = null;
+            console.log(`Found: ${pageId}, Status: ${currentStatusRaw}, Card Type: ${cardType}`);
 
-            if (cardType !== 'Repo Execution') {
-              console.log(`Skipping: Card Type "${cardType || 'empty'}" ≠ Repo Execution`);
+            // Handle Feature Hub → find child Repo Execution for this repo
+            if (cardType === 'Feature Hub') {
+              featureHubPage = page;
+              const repoName = context.repo.repo;
+              const subItems = page.properties['Sub-item']?.relation || [];
+              let found = false;
+
+              for (const subRef of subItems) {
+                const subRes = await notion(`/pages/${subRef.id}`);
+                const subPage = await subRes.json();
+                const subCardType = subPage.properties?.['Card Type']?.select?.name;
+                const subRepo = subPage.properties?.['GitHub Repo']?.select?.name;
+
+                if (subCardType === 'Repo Execution' && subRepo === repoName) {
+                  page = subPage;
+                  pageId = subPage.id;
+                  found = true;
+                  console.log(`Feature Hub → found child Repo Execution for ${repoName}: ${pageId}`);
+                  break;
+                }
+              }
+
+              if (!found) {
+                console.log(`Feature Hub has no child Repo Execution for ${repoName}, skipping`);
+                return;
+              }
+            } else if (cardType !== 'Repo Execution') {
+              console.log(`Skipping: Card Type "${cardType || 'empty'}" is not Repo Execution or Feature Hub`);
               return;
             }
+
+            const currentStatus = page.properties['任務狀態']?.status?.name;
 
             // 2. People
             const techReviewers = page.properties['Tech Reviewer']?.people || [];
@@ -253,6 +282,73 @@ jobs:
             if (notifyUsers.length > 0 && notifyMessage) {
               await addComment(pageId, notifyUsers, notifyMessage, prUrl);
               console.log(`Notified: ${notifyUsers.map(u => u.name || u.id).join(', ')}`);
+            }
+
+            // 6. Feature Hub status rollup
+            const rollupStatuses = ['STAGING FUNC REVIEW', 'PROD FUNCTION REVIEW', 'DONE'];
+            if (newStatus && rollupStatuses.includes(newStatus)) {
+              // Find parent Feature Hub (either we already have it, or check Parent item)
+              let hubPage = featureHubPage;
+              if (!hubPage) {
+                const parentRel = page.properties['Parent item']?.relation || [];
+                if (parentRel.length > 0) {
+                  const parentRes = await notion(`/pages/${parentRel[0].id}`);
+                  if (parentRes.ok) {
+                    const parentPage = await parentRes.json();
+                    if (parentPage.properties?.['Card Type']?.select?.name === 'Feature Hub') {
+                      hubPage = parentPage;
+                    }
+                  }
+                }
+              }
+
+              if (hubPage) {
+                console.log(`Checking Feature Hub rollup for: ${hubPage.id}`);
+                const allChildren = hubPage.properties?.['Sub-item']?.relation || [];
+                const statusRank = {
+                  'STAGING FUNC REVIEW': 6, 'PROD FUNCTION REVIEW': 7,
+                  'DEPLOY PENDING': 8, 'PHASED DONE': 9, 'DONE': 10
+                };
+                const targetRank = statusRank[newStatus] || 0;
+
+                let allAtOrBeyond = true;
+                for (const childRef of allChildren) {
+                  if (childRef.id === pageId) continue; // skip self
+                  const childRes = await notion(`/pages/${childRef.id}`);
+                  if (!childRes.ok) continue;
+                  const childPage = await childRes.json();
+                  const childCardType = childPage.properties?.['Card Type']?.select?.name;
+                  if (childCardType !== 'Repo Execution') continue;
+                  const childStatus = childPage.properties?.['任務狀態']?.status?.name;
+                  const childRank = statusRank[childStatus] || 0;
+                  console.log(`  Sibling ${childRef.id}: ${childStatus} (rank ${childRank})`);
+                  if (childRank < targetRank) {
+                    allAtOrBeyond = false;
+                    break;
+                  }
+                }
+
+                if (allAtOrBeyond) {
+                  console.log(`All children at ${newStatus} or beyond → updating Feature Hub`);
+                  const hubUpdateRes = await notion(`/pages/${hubPage.id}`, 'PATCH', {
+                    properties: { '任務狀態': { status: { name: newStatus } } }
+                  });
+                  if (hubUpdateRes.ok) {
+                    console.log(`Feature Hub updated to ${newStatus}`);
+                    // Notify Func. Reviewer on Feature Hub if entering FUNC REVIEW stage
+                    const hubFuncReviewers = hubPage.properties?.['Func. Reviewer']?.people || [];
+                    if (hubFuncReviewers.length > 0 && (newStatus === 'STAGING FUNC REVIEW' || newStatus === 'PROD FUNCTION REVIEW')) {
+                      const hubTitle = hubPage.properties['項目']?.title?.[0]?.plain_text || 'untitled';
+                      const stage = newStatus === 'STAGING FUNC REVIEW' ? 'Staging' : 'Production';
+                      await addComment(hubPage.id, hubFuncReviewers,
+                        `Feature Hub「${hubTitle}」所有 Repo 已合併，請進行 ${stage} 功能驗證`, null);
+                      console.log(`Notified Feature Hub Func. Reviewer`);
+                    }
+                  }
+                } else {
+                  console.log(`Not all children at ${newStatus} yet, Feature Hub stays`);
+                }
+              }
             }
 
       # === Fix Task (FIX-) PR Sync ===

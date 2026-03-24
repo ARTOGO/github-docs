@@ -87,7 +87,32 @@ jobs:
               }
               
               console.log(`Processing: ${taskId} - ${title}`);
-              
+
+              // Check for Feature Hub parent → use parent's Task ID for branch naming
+              let branchTaskId = taskId;
+              const parentRelation = page.properties['Parent item']?.relation || [];
+              if (parentRelation.length > 0) {
+                const parentRes = await fetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, {
+                  headers: {
+                    'Authorization': `Bearer ${notionKey}`,
+                    'Notion-Version': '2022-06-28'
+                  }
+                });
+                if (parentRes.ok) {
+                  const parentPage = await parentRes.json();
+                  const parentCardType = parentPage.properties?.['Card Type']?.select?.name;
+                  if (parentCardType === 'Feature Hub') {
+                    const parentTaskIdObj = parentPage.properties['Task ID'];
+                    const parentId = parentTaskIdObj?.unique_id ?
+                      `${parentTaskIdObj.unique_id.prefix}-${parentTaskIdObj.unique_id.number}` : null;
+                    if (parentId) {
+                      branchTaskId = parentId;
+                      console.log(`  Using Feature Hub Task ID: ${branchTaskId}`);
+                    }
+                  }
+                }
+              }
+
               // Claude API 翻譯
               let englishName = 'feature';
               try {
@@ -123,7 +148,7 @@ jobs:
               if (taskType.includes('BUG')) branchType = 'fix';
               else if (taskType.includes('專案')) branchType = 'project';
               
-              const branchName = `${branchType}/${taskId}_${englishName}`;
+              const branchName = `${branchType}/${branchTaskId}_${englishName}`;
               console.log(`Creating branch: ${branchName}`);
               
               // Create branch
@@ -279,6 +304,128 @@ jobs:
               });
 
               console.log(`Reset status to DEV IN PROGRESS, assigned to Developer: ${taskId}`);
+            }
+
+            // --- Feature Hub FUNC REVIEW FAILED cascade ---
+            console.log('=== 功能 2b：Feature Hub FUNC REVIEW FAILED cascade ===');
+
+            const failedHubQuery = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${notionKey}`,
+                'Notion-Version': '2022-06-28',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                filter: {
+                  and: [
+                    { property: '任務狀態', status: { equals: 'FUNC REVIEW FAILED' } },
+                    { property: 'Card Type', select: { equals: 'Feature Hub' } }
+                  ]
+                }
+              })
+            });
+
+            const failedHubData = await failedHubQuery.json();
+            console.log(`[Feature Hub FUNC REVIEW FAILED] Found ${failedHubData.results?.length || 0} Feature Hubs`);
+
+            for (const hub of failedHubData.results || []) {
+              const hubTaskIdObj = hub.properties['Task ID'];
+              const hubTaskId = hubTaskIdObj?.unique_id ?
+                `${hubTaskIdObj.unique_id.prefix}-${hubTaskIdObj.unique_id.number}` : null;
+              const hubTitle = hub.properties['項目']?.title?.[0]?.plain_text || 'untitled';
+              console.log(`Processing Feature Hub: ${hubTaskId} - ${hubTitle}`);
+
+              // Find all Sub-item (child Repo Execution cards)
+              const subItems = hub.properties['Sub-item']?.relation || [];
+              for (const subRef of subItems) {
+                const subRes = await fetch(`https://api.notion.com/v1/pages/${subRef.id}`, {
+                  headers: {
+                    'Authorization': `Bearer ${notionKey}`,
+                    'Notion-Version': '2022-06-28'
+                  }
+                });
+                if (!subRes.ok) continue;
+                const subPage = await subRes.json();
+                const subCardType = subPage.properties?.['Card Type']?.select?.name;
+                if (subCardType !== 'Repo Execution') continue;
+
+                const subTitle = subPage.properties['項目']?.title?.[0]?.plain_text || 'untitled';
+                const subDevelopers = subPage.properties['Developer']?.people || [];
+                const subAssignees = subPage.properties['指派給']?.people || [];
+                const subPrUrl = subPage.properties['GitHub PR']?.url || '';
+                const subNotifyUsers = subDevelopers.length > 0 ? subDevelopers : subAssignees;
+
+                console.log(`  Cascading to child: ${subTitle}`);
+
+                // Notify Developer
+                if (subNotifyUsers.length > 0) {
+                  const richText = [];
+                  for (let i = 0; i < subNotifyUsers.length; i++) {
+                    richText.push({
+                      type: 'mention',
+                      mention: { type: 'user', user: { id: subNotifyUsers[i].id } }
+                    });
+                    if (i < subNotifyUsers.length - 1) {
+                      richText.push({ type: 'text', text: { content: ' ' } });
+                    }
+                  }
+                  richText.push({
+                    type: 'text',
+                    text: { content: ` Feature Hub「${hubTitle}」Function Review 未通過，請進行調整後重新開 PR\n原 PR: ${subPrUrl}` }
+                  });
+
+                  await fetch('https://api.notion.com/v1/comments', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${notionKey}`,
+                      'Notion-Version': '2022-06-28',
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      parent: { page_id: subRef.id },
+                      rich_text: richText
+                    })
+                  });
+                }
+
+                // Reset child: DEV IN PROGRESS, assign Developer, clear PR
+                const childUpdateProps = {
+                  '任務狀態': { status: { name: 'DEV IN PROGRESS' } },
+                  'PR Status': { select: null },
+                  'GitHub PR': { url: null }
+                };
+                if (subDevelopers.length > 0) {
+                  childUpdateProps['指派給'] = { people: subDevelopers.map(d => ({ id: d.id })) };
+                }
+
+                await fetch(`https://api.notion.com/v1/pages/${subRef.id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Authorization': `Bearer ${notionKey}`,
+                    'Notion-Version': '2022-06-28',
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ properties: childUpdateProps })
+                });
+                console.log(`  Child reset to DEV IN PROGRESS`);
+              }
+
+              // Reset Feature Hub itself to DEV IN PROGRESS
+              await fetch(`https://api.notion.com/v1/pages/${hub.id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${notionKey}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  properties: {
+                    '任務狀態': { status: { name: 'DEV IN PROGRESS' } }
+                  }
+                })
+              });
+              console.log(`Feature Hub ${hubTaskId} reset to DEV IN PROGRESS`);
             }
 
             // ========================================
