@@ -458,7 +458,33 @@ jobs:
             const fixers = fixTask.properties['修復者']?.people || [];
             console.log(`Found Fix Task: ${fixTaskPageId}, Status: ${currentStatus}`);
 
-            // 2. Determine action
+            // 2a. Get Tech Reviewer from related Repo Execution card
+            let techReviewers = [];
+            const repoExecRelation = fixTask.properties['Repo Execution']?.relation || [];
+            if (repoExecRelation.length > 0) {
+              const reRes = await notion(`/pages/${repoExecRelation[0].id}`);
+              if (reRes.ok) {
+                const rePage = await reRes.json();
+                techReviewers = rePage.properties?.['Tech Reviewer']?.people || [];
+                if (techReviewers.length === 0) {
+                  // Fallback: check Feature Hub parent for Tech Reviewer
+                  const parentRel = rePage.properties?.['Parent item']?.relation || [];
+                  if (parentRel.length > 0) {
+                    const parentRes = await notion(`/pages/${parentRel[0].id}`);
+                    if (parentRes.ok) {
+                      const parentPage = await parentRes.json();
+                      if (parentPage.properties?.['Card Type']?.select?.name === 'Feature Hub') {
+                        techReviewers = parentPage.properties?.['Tech Reviewer']?.people || [];
+                        if (techReviewers.length > 0) console.log(`Inherited Tech Reviewer from Feature Hub`);
+                      }
+                    }
+                  }
+                }
+                if (techReviewers.length > 0) console.log(`Tech Reviewer: ${techReviewers.map(u => u.name || u.id).join(', ')}`);
+              }
+            }
+
+            // 2b. Determine action
             let newStatus = null;
             let fixPrStatus = null;
             let notifyUsers = [];
@@ -480,6 +506,8 @@ jobs:
             } else if (eventName === 'pull_request') {
               if (prAction === 'opened' || prAction === 'reopened') {
                 fixPrStatus = 'Open';
+                notifyUsers = techReviewers;
+                notifyMessage = 'Fix PR 已開啟，請進行 Code Review';
               } else if (prAction === 'closed') {
                 if (prMerged) {
                   fixPrStatus = 'Merged';
