@@ -57,14 +57,19 @@ on:
       REVIEW_ISSUE_DB_ID:
         required: false
 
+concurrency:
+  group: notion-pr-sync-${{ inputs.head_branch }}
+  cancel-in-progress: false
+
 jobs:
   sync-notion:
     runs-on: ubuntu-latest
     steps:
       - name: Extract Task ID from branch
         id: extract
+        env:
+          BRANCH: ${{ inputs.head_branch }}
         run: |
-          BRANCH="${{ inputs.head_branch }}"
           echo "Head Branch: $BRANCH"
 
           if [[ $BRANCH =~ (SB-[0-9]+) ]]; then
@@ -121,7 +126,7 @@ jobs:
             const stagingBranches = (process.env.STAGING_REVIEW_BRANCHES || 'staging').split(',').map(b => b.trim());
             const prodBranches = (process.env.PROD_REVIEW_BRANCHES || 'main,master').split(',').map(b => b.trim());
 
-            // --- Notion API helper ---
+            // --- Notion API helper (with retry) ---
             async function notion(endpoint, method = 'GET', body = null) {
               const opts = {
                 method,
@@ -132,8 +137,18 @@ jobs:
                 }
               };
               if (body) opts.body = JSON.stringify(body);
-              const res = await fetch(`https://api.notion.com/v1${endpoint}`, opts);
-              return res;
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                const res = await fetch(`https://api.notion.com/v1${endpoint}`, opts);
+                if (res.status === 429 || res.status >= 500) {
+                  const wait = attempt * 2000;
+                  console.warn(`Notion ${res.status} on ${endpoint}, retry ${attempt}/3 in ${wait}ms`);
+                  await new Promise(r => setTimeout(r, wait));
+                  continue;
+                }
+                return res;
+              }
+              console.error(`Notion API failed after 3 retries: ${endpoint}`);
+              return { ok: false, json: async () => ({ message: 'max retries exceeded' }) };
             }
 
             async function addComment(pageId, users, message, linkUrl) {
@@ -183,6 +198,12 @@ jobs:
                 const subRepo = subPage.properties?.['GitHub Repo']?.select?.name;
 
                 if (subCardType === 'Repo Execution' && subRepo === repoName) {
+                  // Match by GitHub Branch to handle multiple Repo Execution cards for the same repo
+                  const subBranch = subPage.properties?.['GitHub Branch']?.rich_text?.[0]?.plain_text || '';
+                  if (subBranch && subBranch !== headBranch) {
+                    console.log(`  Skipping ${subRef.id}: branch "${subBranch}" ≠ "${headBranch}"`);
+                    continue;
+                  }
                   page = subPage;
                   pageId = subPage.id;
                   found = true;
@@ -225,13 +246,20 @@ jobs:
             let notifyUsers = [];
             let notifyMessage = '';
 
+            // 防止狀態倒退的共用清單
+            const noBackwardStatuses = ['STAGING FUNC REVIEW', 'PROD FUNCTION REVIEW', 'DONE', 'ABANDONED', 'DEPLOY PENDING', 'PHASED DONE'];
+
             if (eventName === 'pull_request_review') {
               if (reviewAuthorId && prAuthorId && reviewAuthorId === prAuthorId) {
                 console.log('⏭️ Review author = PR author, skipping');
                 return;
               }
               if (reviewState === 'changes_requested' || reviewState === 'commented') {
-                newStatus = 'DEV IN PROGRESS';
+                if (noBackwardStatuses.includes(currentStatus)) {
+                  console.log(`Status ${currentStatus} is beyond TECH REVIEW, only notifying`);
+                } else {
+                  newStatus = 'DEV IN PROGRESS';
+                }
                 notifyUsers = developers.length > 0 ? developers : assignees;
                 const reason = reviewState === 'changes_requested' ? 'Tech Review 未通過' : 'Tech Reviewer 有留言需要回應';
                 notifyMessage = `${reason}，請查看 PR 並進行處理，完成後請點擊 "Re-request review"`;
@@ -242,8 +270,6 @@ jobs:
             } else if (eventName === 'pull_request') {
               if (prAction === 'opened' || prAction === 'reopened') {
                 prStatus = 'Open';
-                // 防止狀態倒退：已進入 STAGING 以上的卡片不該被打回 TECH REVIEW
-                const noBackwardStatuses = ['STAGING FUNC REVIEW', 'PROD FUNCTION REVIEW', 'DONE', 'ABANDONED', 'DEPLOY PENDING', 'PHASED DONE'];
                 if (noBackwardStatuses.includes(currentStatus)) {
                   console.log(`Status ${currentStatus} is beyond TECH REVIEW, only updating PR fields`);
                 } else {
@@ -275,8 +301,12 @@ jobs:
                     console.log(`Merged to ${baseBranch} — only updating PR status`);
                   }
                 } else {
-                  newStatus = 'DEV IN PROGRESS';
                   prStatus = 'Closed';
+                  if (!noBackwardStatuses.includes(currentStatus)) {
+                    newStatus = 'DEV IN PROGRESS';
+                  } else {
+                    console.log(`Status ${currentStatus} is beyond TECH REVIEW, only updating PR status`);
+                  }
                 }
               }
             }
@@ -334,14 +364,20 @@ jobs:
 
                 let allAtOrBeyond = true;
                 for (const childRef of allChildren) {
-                  if (childRef.id === pageId) continue; // skip self
-                  const childRes = await notion(`/pages/${childRef.id}`);
-                  if (!childRes.ok) continue;
-                  const childPage = await childRes.json();
-                  const childCardType = childPage.properties?.['Card Type']?.select?.name;
-                  if (childCardType !== 'Repo Execution') continue;
-                  const childStatus = childPage.properties?.['任務狀態']?.status?.name;
-                  const childRank = statusRank[childStatus] || 0;
+                  let childStatus, childRank;
+                  if (childRef.id === pageId) {
+                    // Use known newStatus for self (avoid re-fetch eventual consistency issue)
+                    childStatus = newStatus;
+                    childRank = targetRank;
+                  } else {
+                    const childRes = await notion(`/pages/${childRef.id}`);
+                    if (!childRes.ok) continue;
+                    const childPage = await childRes.json();
+                    const childCardType = childPage.properties?.['Card Type']?.select?.name;
+                    if (childCardType !== 'Repo Execution') continue;
+                    childStatus = childPage.properties?.['任務狀態']?.status?.name;
+                    childRank = statusRank[childStatus] || 0;
+                  }
                   console.log(`  Sibling ${childRef.id}: ${childStatus} (rank ${childRank})`);
                   if (childRank < targetRank) {
                     allAtOrBeyond = false;
@@ -411,7 +447,7 @@ jobs:
               return;
             }
 
-            // --- Notion API helper ---
+            // --- Notion API helper (with retry) ---
             async function notion(endpoint, method = 'GET', body = null) {
               const opts = {
                 method,
@@ -422,8 +458,18 @@ jobs:
                 }
               };
               if (body) opts.body = JSON.stringify(body);
-              const res = await fetch(`https://api.notion.com/v1${endpoint}`, opts);
-              return res;
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                const res = await fetch(`https://api.notion.com/v1${endpoint}`, opts);
+                if (res.status === 429 || res.status >= 500) {
+                  const wait = attempt * 2000;
+                  console.warn(`Notion ${res.status} on ${endpoint}, retry ${attempt}/3 in ${wait}ms`);
+                  await new Promise(r => setTimeout(r, wait));
+                  continue;
+                }
+                return res;
+              }
+              console.error(`Notion API failed after 3 retries: ${endpoint}`);
+              return { ok: false, json: async () => ({ message: 'max retries exceeded' }) };
             }
 
             async function addComment(pageId, users, message, linkUrl) {
@@ -508,6 +554,9 @@ jobs:
                 fixPrStatus = 'Open';
                 notifyUsers = techReviewers;
                 notifyMessage = 'Fix PR 已開啟，請進行 Code Review';
+              } else if (prAction === 'review_requested') {
+                notifyUsers = techReviewers;
+                notifyMessage = '修復者已修改完成，請再次進行 Code Review';
               } else if (prAction === 'closed') {
                 if (prMerged) {
                   fixPrStatus = 'Merged';
@@ -552,9 +601,13 @@ jobs:
 
                 if (allFixTaskRefs.length === 0) continue;
 
-                // Check each Fix Task's status
+                // Check each Fix Task's status (skip self — we just set it to Tech Fixed)
                 let allDone = true;
                 for (const ftRef of allFixTaskRefs) {
+                  if (ftRef.id === fixTaskPageId) {
+                    console.log(`  Fix Task ${ftRef.id}: Tech Fixed (self)`);
+                    continue;
+                  }
                   const ftPage = await (await notion(`/pages/${ftRef.id}`)).json();
                   const ftStatus = ftPage.properties?.['狀態']?.status?.name;
                   console.log(`  Fix Task ${ftRef.id}: ${ftStatus}`);
@@ -570,13 +623,44 @@ jobs:
                     properties: { '狀態': { status: { name: 'Tech Fixed' } } }
                   });
 
-                  // Notify reporter (報告者) on Review Issue
-                  const reporter = riPage.properties?.['報告者']?.created_by;
-                  if (reporter) {
-                    await addComment(riRef.id, [reporter], '所有 Fix Task 已完成修復，請進行驗證', null);
+                  // Notify Func. Reviewer from Sprint Backlog relation
+                  const sprintBacklogRefs = riPage.properties?.['Sprint Backlog']?.relation || [];
+                  let funcReviewersToNotify = [];
+                  for (const sbRef of sprintBacklogRefs) {
+                    const sbRes = await notion(`/pages/${sbRef.id}`);
+                    if (!sbRes.ok) continue;
+                    const sbPage = await sbRes.json();
+                    const sbCardType = sbPage.properties?.['Card Type']?.select?.name;
+                    let fr = sbPage.properties?.['Func. Reviewer']?.people || [];
+                    // If Repo Execution has no Func. Reviewer, check Feature Hub parent
+                    if (fr.length === 0 && sbCardType === 'Repo Execution') {
+                      const parentRel = sbPage.properties?.['Parent item']?.relation || [];
+                      if (parentRel.length > 0) {
+                        const parentRes = await notion(`/pages/${parentRel[0].id}`);
+                        if (parentRes.ok) {
+                          const parentPage = await parentRes.json();
+                          if (parentPage.properties?.['Card Type']?.select?.name === 'Feature Hub') {
+                            fr = parentPage.properties?.['Func. Reviewer']?.people || [];
+                          }
+                        }
+                      }
+                    }
+                    for (const u of fr) {
+                      if (!funcReviewersToNotify.some(x => x.id === u.id)) funcReviewersToNotify.push(u);
+                    }
+                  }
+                  if (funcReviewersToNotify.length > 0) {
+                    await addComment(riRef.id, funcReviewersToNotify, '所有 Fix Task 已完成修復，請進行驗證', null);
+                    console.log(`Notified Func. Reviewer: ${funcReviewersToNotify.map(u => u.name || u.id).join(', ')}`);
                   }
                 } else {
                   console.log(`Not all Fix Tasks done yet, Review Issue stays as-is`);
                 }
               }
             }
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          echo "::error::Notion PR Sync workflow failed. Check logs above for details."
+          echo "Branch: ${{ inputs.head_branch }}, Action: ${{ inputs.pr_action }}, Event: ${{ inputs.event_name }}"
