@@ -1,0 +1,1014 @@
+name: AI Code Review (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: number
+      pr_url:
+        required: true
+        type: string
+      head_branch:
+        required: true
+        type: string
+      base_branch:
+        required: true
+        type: string
+      repo_full_name:
+        required: true
+        type: string
+        description: 'owner/repo 格式'
+    secrets:
+      NOTION_API_KEY:
+        required: true
+      NOTION_DATABASE_ID:
+        required: true
+      FIX_TASK_DB_ID:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: true
+      OPENAI_API_KEY:
+        required: true
+      BOT_APP_ID:
+        required: true
+      BOT_PRIVATE_KEY:
+        required: true
+
+concurrency:
+  group: ai-review-${{ inputs.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+
+      - name: AI Code Review
+        uses: actions/github-script@v7
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          BOT_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          PR_URL: ${{ inputs.pr_url }}
+          HEAD_BRANCH: ${{ inputs.head_branch }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
+          REPO_FULL_NAME: ${{ inputs.repo_full_name }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const notionKey = process.env.NOTION_API_KEY;
+            const sprintDbId = process.env.NOTION_DATABASE_ID;
+            const fixTaskDbId = process.env.FIX_TASK_DB_ID;
+            const anthropicKey = process.env.ANTHROPIC_API_KEY;
+            const openaiKey = process.env.OPENAI_API_KEY;
+            const botToken = process.env.BOT_TOKEN;
+            const prNumber = parseInt(process.env.PR_NUMBER);
+            const prUrl = process.env.PR_URL;
+            const headBranch = process.env.HEAD_BRANCH;
+            const baseBranch = process.env.BASE_BRANCH;
+            const repoFullName = process.env.REPO_FULL_NAME;
+            const [repoOwner, repoName] = repoFullName.split('/');
+
+            // ========================================
+            // Notion API helpers
+            // ========================================
+            const notionHeaders = {
+              'Authorization': `Bearer ${notionKey}`,
+              'Notion-Version': '2022-06-28',
+              'Content-Type': 'application/json'
+            };
+
+            async function notionFetch(url, options) {
+              for (let attempt = 1; attempt <= 3; attempt++) {
+                const res = await fetch(url, options);
+                if (res.status === 429 || res.status >= 500) {
+                  const wait = attempt * 2000;
+                  console.warn(`Notion ${res.status}, retry ${attempt}/3 in ${wait}ms`);
+                  await new Promise(r => setTimeout(r, wait));
+                  continue;
+                }
+                return res;
+              }
+              console.error(`Notion API failed after 3 retries: ${url}`);
+              return { ok: false, json: async () => ({ message: 'max retries exceeded' }) };
+            }
+
+            async function queryNotionDb(dbId, filter) {
+              const allResults = [];
+              let startCursor = undefined;
+              do {
+                const body = { filter };
+                if (startCursor) body.start_cursor = startCursor;
+                const res = await notionFetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
+                  method: 'POST', headers: notionHeaders, body: JSON.stringify(body)
+                });
+                if (!res.ok) { console.error(`Notion query error:`, await res.json()); break; }
+                const page = await res.json();
+                allResults.push(...(page.results || []));
+                startCursor = page.has_more ? page.next_cursor : undefined;
+              } while (startCursor);
+              return allResults;
+            }
+
+            async function addNotionComment(pageId, richText) {
+              await notionFetch('https://api.notion.com/v1/comments', {
+                method: 'POST', headers: notionHeaders,
+                body: JSON.stringify({ parent: { page_id: pageId }, rich_text: richText })
+              });
+            }
+
+            // Backward status guard：防止將已完成/已放棄的卡片狀態倒退
+            const terminalStatuses = new Set(['DONE', 'ABANDONED', 'FUNC REVIEW', 'FUNC REVIEW FAILED']);
+
+            async function safeUpdateStatus(pageId, newStatus) {
+              // Re-fetch current status（因 review loop 可能耗時數分鐘，狀態可能已被人工更新）
+              const res = await notionFetch(`https://api.notion.com/v1/pages/${pageId}`, { headers: notionHeaders });
+              if (!res.ok) {
+                console.warn(`Failed to re-fetch page ${pageId} for status guard, skipping update`);
+                return false;
+              }
+              const page = await res.json();
+              const currentStatus = page.properties?.['任務狀態']?.status?.name;
+              if (terminalStatuses.has(currentStatus)) {
+                console.log(`Status guard: page ${pageId} is "${currentStatus}", skipping update to "${newStatus}"`);
+                return false;
+              }
+              await notionFetch(`https://api.notion.com/v1/pages/${pageId}`, {
+                method: 'PATCH', headers: notionHeaders,
+                body: JSON.stringify({ properties: { '任務狀態': { status: { name: newStatus } } } })
+              });
+              console.log(`Status updated: ${pageId} → ${newStatus}`);
+              return true;
+            }
+
+            // ========================================
+            // 1. 從 branch 提取 Task ID，判斷類型
+            // ========================================
+            const sbMatch = headBranch.match(/SB-(\d+)/i);
+            const fixMatch = headBranch.match(/FIX-(\d+)/i);
+
+            if (!sbMatch && !fixMatch) {
+              console.log(`Branch "${headBranch}" does not contain SB- or FIX-, skipping AI review`);
+              return;
+            }
+
+            const taskType = sbMatch ? 'sprint' : 'fix';
+            const taskIdNumber = sbMatch ? parseInt(sbMatch[1]) : parseInt(fixMatch[1]);
+            const taskPrefix = sbMatch ? 'SB' : 'FIX';
+            const taskId = `${taskPrefix}-${taskIdNumber}`;
+            console.log(`Task type: ${taskType}, Task ID: ${taskId}`);
+
+            // ========================================
+            // 2. 查詢 Notion 卡片 + Review Mode
+            // ========================================
+            let card = null;
+            let cardPageId = null;
+            let reviewMode = 'Human Review';
+            let notifyPeople = [];
+
+            if (taskType === 'sprint') {
+              // 查 Sprint Backlog — 先用 Task ID unique_id 找
+              const results = await queryNotionDb(sprintDbId, {
+                property: 'Task ID', unique_id: { equals: taskIdNumber }
+              });
+
+              if (results.length === 0) {
+                console.log(`No Sprint Backlog card found for ${taskId}`);
+                return;
+              }
+
+              let targetCard = results[0];
+
+              // 若為 Feature Hub → 遍歷 Sub-item 找到正確的 Repo Execution 子卡
+              const cardType = targetCard.properties?.['Card Type']?.select?.name;
+              if (cardType === 'Feature Hub') {
+                const subItems = targetCard.properties['Sub-item']?.relation || [];
+                let found = false;
+                for (const subRef of subItems) {
+                  const subRes = await notionFetch(`https://api.notion.com/v1/pages/${subRef.id}`, { headers: notionHeaders });
+                  if (!subRes.ok) continue;
+                  const subPage = await subRes.json();
+                  const subRepo = subPage.properties?.['GitHub Repo']?.select?.name;
+                  const subBranch = subPage.properties?.['GitHub Branch']?.rich_text?.[0]?.plain_text || '';
+                  if (subRepo === repoName && subBranch === headBranch) {
+                    targetCard = subPage;
+                    found = true;
+                    console.log(`Found Repo Execution child: ${subRef.id}`);
+                    break;
+                  }
+                }
+                if (!found) {
+                  console.log(`No matching Repo Execution child for repo=${repoName}, branch=${headBranch}`);
+                  return;
+                }
+              }
+
+              card = targetCard;
+              cardPageId = card.id;
+              reviewMode = card.properties?.['Review Mode']?.select?.name || 'Human Review';
+
+              // 取得 Tech Reviewer（用於 Clean Pass 通知）
+              let techReviewers = card.properties?.['Tech Reviewer']?.people || [];
+              if (techReviewers.length === 0) {
+                // 嘗試從 Feature Hub parent 繼承
+                const parentRel = card.properties?.['Parent item']?.relation || [];
+                if (parentRel.length > 0) {
+                  const parentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRel[0].id}`, { headers: notionHeaders });
+                  if (parentRes.ok) {
+                    const parentPage = await parentRes.json();
+                    techReviewers = parentPage.properties?.['Tech Reviewer']?.people || [];
+                  }
+                }
+              }
+
+              // 取得 Developer（用於 Fixed/Failed 通知）
+              const developers = card.properties?.['Developer']?.people || [];
+              const assignees = card.properties?.['指派給']?.people || [];
+              const devUsers = developers.length > 0 ? developers : assignees;
+
+              // 儲存供後續使用
+              card._techReviewers = techReviewers;
+              card._developers = devUsers;
+
+            } else {
+              // Fix Task
+              if (!fixTaskDbId) {
+                console.log('FIX_TASK_DB_ID not set, skipping Fix Task review');
+                return;
+              }
+
+              const results = await queryNotionDb(fixTaskDbId, {
+                property: 'Fix Task ID', unique_id: { equals: taskIdNumber }
+              });
+
+              if (results.length === 0) {
+                console.log(`No Fix Task found for ${taskId}`);
+                return;
+              }
+
+              card = results[0];
+              cardPageId = card.id;
+
+              // Fix Task 的 Review Mode 繼承自關聯的 Repo Execution 卡
+              const reRelation = card.properties?.['Repo Execution']?.relation || [];
+              if (reRelation.length > 0) {
+                const reRes = await notionFetch(`https://api.notion.com/v1/pages/${reRelation[0].id}`, { headers: notionHeaders });
+                if (reRes.ok) {
+                  const rePage = await reRes.json();
+                  reviewMode = rePage.properties?.['Review Mode']?.select?.name || 'Human Review';
+
+                  // Tech Reviewer 從 Repo Execution 或其 Feature Hub parent 取得
+                  let techReviewers = rePage.properties?.['Tech Reviewer']?.people || [];
+                  if (techReviewers.length === 0) {
+                    const parentRel = rePage.properties?.['Parent item']?.relation || [];
+                    if (parentRel.length > 0) {
+                      const parentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRel[0].id}`, { headers: notionHeaders });
+                      if (parentRes.ok) {
+                        const parentPage = await parentRes.json();
+                        if (parentPage.properties?.['Card Type']?.select?.name === 'Feature Hub') {
+                          techReviewers = parentPage.properties?.['Tech Reviewer']?.people || [];
+                        }
+                      }
+                    }
+                  }
+                  card._techReviewers = techReviewers;
+                }
+              }
+
+              // Fix Task 的修復者
+              const fixers = card.properties?.['修復者']?.people || [];
+              card._developers = fixers;
+            }
+
+            console.log(`Review Mode: ${reviewMode}`);
+            console.log(`Card Page ID: ${cardPageId}`);
+
+            // ========================================
+            // 3. 取得 PR diff
+            // ========================================
+            async function getPRDiff() {
+              const diffRes = await fetch(`https://api.github.com/repos/${repoFullName}/pulls/${prNumber}`, {
+                headers: {
+                  'Authorization': `Bearer ${botToken}`,
+                  'Accept': 'application/vnd.github.v3.diff'
+                }
+              });
+              if (!diffRes.ok) {
+                console.error(`Failed to get PR diff: ${diffRes.status}`);
+                return null;
+              }
+              return diffRes.text();
+            }
+
+            let diff = await getPRDiff();
+            if (!diff) {
+              console.error('Failed to get PR diff, aborting');
+              return;
+            }
+
+            // 大型 PR 檢查：超過 50KB 跳過 AI review
+            if (diff.length > 50 * 1024) {
+              console.log(`PR diff too large (${diff.length} bytes), skipping AI review`);
+
+              // 留 PR comment
+              await github.rest.issues.createComment({
+                owner: repoOwner, repo: repoName, issue_number: prNumber,
+                body: `⚠️ PR diff 過大（${Math.round(diff.length / 1024)}KB），已跳過 AI Review，請進行人工 Code Review`
+              });
+
+              // 設定 TECH REVIEW + 通知（因 PR sync 的 TECH REVIEW 邏輯已移除）
+              if (taskType === 'sprint') {
+                await safeUpdateStatus(cardPageId, 'TECH REVIEW');
+              }
+
+              const techReviewers = card._techReviewers || [];
+              if (techReviewers.length > 0) {
+                const richText = [];
+                for (let i = 0; i < techReviewers.length; i++) {
+                  richText.push({ type: 'mention', mention: { type: 'user', user: { id: techReviewers[i].id } } });
+                  if (i < techReviewers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                }
+                richText.push({ type: 'text', text: { content: ` PR diff 過大，已跳過 AI Review，請進行人工 Code Review\n${prUrl}` } });
+                await addNotionComment(cardPageId, richText);
+              }
+              return;
+            }
+
+            // ========================================
+            // 4. Reviewer + Fixer 函式
+            // ========================================
+            const reviewerPrompt = `你是一位資深 Code Reviewer。請審查以下 PR diff。
+
+請用以下 JSON 格式回應（不要加 markdown code fence）：
+{
+  "passed": true/false,
+  "issues": [
+    {
+      "file": "path/to/file",
+      "line": 42,
+      "severity": "error|warning|info",
+      "description": "問題描述",
+      "suggestion": "建議修改方式"
+    }
+  ],
+  "summary": "整體評估摘要"
+}
+
+審查重點：
+- 邏輯錯誤與 bug
+- 安全性問題（OWASP Top 10）
+- 效能問題
+- 程式碼風格與可維護性
+- 錯誤處理是否完善
+
+只回報 error 和 warning 等級的問題。info 等級只在有重要建議時才加。
+若沒有問題，passed 設為 true，issues 設為空陣列。`;
+
+            async function claudeReview(diffText, round) {
+              try {
+                const res = await fetch('https://api.anthropic.com/v1/messages', {
+                  method: 'POST',
+                  headers: {
+                    'x-api-key': anthropicKey,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 8192,
+                    system: reviewerPrompt,
+                    messages: [{ role: 'user', content: `Round ${round} review.\n\nPR diff:\n${diffText}` }]
+                  })
+                });
+                if (!res.ok) {
+                  console.error(`Claude Reviewer API error: ${res.status}`);
+                  return { passed: true, issues: [], summary: 'Claude API error — skipped', error: true };
+                }
+                const data = await res.json();
+                // 檢查是否因 max_tokens 被截斷
+                if (data.stop_reason === 'max_tokens') {
+                  console.warn('Claude Reviewer output truncated (max_tokens)');
+                  return { passed: false, issues: [], summary: 'Claude output truncated — treating as fail', error: true };
+                }
+                const text = data.content?.[0]?.text || '';
+                // 嘗試 parse JSON（移除可能的 markdown code fence）
+                const jsonStr = text.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
+                const result = JSON.parse(jsonStr);
+                return result;
+              } catch (e) {
+                console.error(`Claude Reviewer failed: ${e.message}`);
+                return { passed: true, issues: [], summary: `Claude error: ${e.message}`, error: true };
+              }
+            }
+
+            async function openaiReview(diffText, round) {
+              try {
+                const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${openaiKey}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: 'gpt-4o',
+                    max_tokens: 8192,
+                    messages: [
+                      { role: 'system', content: reviewerPrompt },
+                      { role: 'user', content: `Round ${round} review.\n\nPR diff:\n${diffText}` }
+                    ],
+                    response_format: { type: 'json_object' }
+                  })
+                });
+                if (!res.ok) {
+                  console.error(`OpenAI Reviewer API error: ${res.status}`);
+                  return { passed: true, issues: [], summary: 'OpenAI API error — skipped', error: true };
+                }
+                const data = await res.json();
+                // 檢查是否因 max_tokens 被截斷
+                if (data.choices?.[0]?.finish_reason === 'length') {
+                  console.warn('OpenAI Reviewer output truncated (max_tokens)');
+                  return { passed: false, issues: [], summary: 'OpenAI output truncated — treating as fail', error: true };
+                }
+                const text = data.choices?.[0]?.message?.content || '';
+                const result = JSON.parse(text);
+                return result;
+              } catch (e) {
+                console.error(`OpenAI Reviewer failed: ${e.message}`);
+                return { passed: true, issues: [], summary: `OpenAI error: ${e.message}`, error: true };
+              }
+            }
+
+            function mergeIssues(claudeIssues, openaiIssues) {
+              // 簡單合併 + 去重（以 file+line+severity 為 key）
+              const seen = new Set();
+              const merged = [];
+              for (const issue of [...claudeIssues, ...openaiIssues]) {
+                const key = `${issue.file}:${issue.line}:${issue.severity}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  merged.push(issue);
+                }
+              }
+              return merged;
+            }
+
+            async function fixerFix(issues, round) {
+              const issueList = issues.map((issue, i) =>
+                `${i + 1}. [${issue.severity}] ${issue.file}:${issue.line}\n   問題：${issue.description}\n   建議：${issue.suggestion}`
+              ).join('\n\n');
+
+              const fixerPrompt = `你是一位資深開發者。以下是兩位 Reviewer 發現的問題，請修正程式碼。
+
+規則：
+- 只修改 Reviewer 指出的問題
+- 不要做額外的重構或美化
+- 每個修改都要有明確對應的 issue
+- 回傳修改後的檔案內容
+
+請用以下 JSON 格式回應（不要加 markdown code fence）：
+{
+  "fixes": [
+    {
+      "file": "path/to/file",
+      "content": "完整的修改後檔案內容"
+    }
+  ],
+  "summary": "修改摘要"
+}
+
+只修改需要修改的檔案。content 必須是完整的檔案內容（不是 diff）。`;
+
+              // 讀取需要修改的檔案的當前內容
+              const filesToRead = [...new Set(issues.map(i => i.file))];
+              const fileContents = {};
+              for (const filePath of filesToRead) {
+                try {
+                  const fileRes = await fetch(`https://api.github.com/repos/${repoFullName}/contents/${filePath}?ref=${headBranch}`, {
+                    headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
+                  });
+                  if (fileRes.ok) {
+                    const fileData = await fileRes.json();
+                    fileContents[filePath] = Buffer.from(fileData.content, 'base64').toString('utf-8');
+                  }
+                } catch (e) {
+                  console.warn(`Could not read file ${filePath}: ${e.message}`);
+                }
+              }
+
+              const currentFiles = Object.entries(fileContents)
+                .map(([path, content]) => `=== ${path} ===\n${content}`)
+                .join('\n\n');
+
+              // Fixer 輸入大小防護：超過 100KB 的檔案內容可能導致截斷
+              const fixerInputSize = issueList.length + currentFiles.length;
+              if (fixerInputSize > 100 * 1024) {
+                console.warn(`Fixer input too large (${Math.round(fixerInputSize / 1024)}KB), skipping auto-fix`);
+                return null;
+              }
+
+              try {
+                const res = await fetch('https://api.anthropic.com/v1/messages', {
+                  method: 'POST',
+                  headers: {
+                    'x-api-key': anthropicKey,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 32768,
+                    system: fixerPrompt,
+                    messages: [{ role: 'user', content: `問題清單：\n${issueList}\n\n目前檔案內容：\n${currentFiles}` }]
+                  })
+                });
+
+                if (!res.ok) {
+                  console.error(`Fixer API error: ${res.status}`);
+                  return null;
+                }
+
+                const data = await res.json();
+                // 檢查是否因 max_tokens 被截斷
+                if (data.stop_reason === 'max_tokens') {
+                  console.warn('Fixer output truncated (max_tokens) — treating as failure');
+                  return null;
+                }
+                const text = data.content?.[0]?.text || '';
+                const jsonStr = text.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
+                const result = JSON.parse(jsonStr);
+
+                // Push fixes as a commit
+                if (result.fixes && result.fixes.length > 0) {
+                  // 取得最新 commit SHA
+                  const refRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/ref/heads/${headBranch}`, {
+                    headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
+                  });
+                  if (!refRes.ok) {
+                    console.error(`Failed to get branch ref: ${refRes.status}`);
+                    return null;
+                  }
+                  const refData = await refRes.json();
+                  const latestSha = refData.object.sha;
+
+                  // 取得 base tree
+                  const commitRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/commits/${latestSha}`, {
+                    headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
+                  });
+                  const commitData = await commitRes.json();
+                  const baseTreeSha = commitData.tree.sha;
+
+                  // 建立 blobs + tree
+                  const treeItems = [];
+                  for (const fix of result.fixes) {
+                    // 安全檢查：只允許修改 PR 中已存在的檔案
+                    const allowedFiles = prChangedFiles.size > 0 ? prChangedFiles : new Set(Object.keys(fileContents));
+                    if (!allowedFiles.has(fix.file)) {
+                      console.warn(`Fixer tried to modify non-PR file: ${fix.file}, skipping`);
+                      continue;
+                    }
+
+                    // 截斷偵測：如果修復後內容小於原檔 50%，可能是 AI 截斷輸出
+                    const originalContent = fileContents[fix.file];
+                    if (originalContent && fix.content.length < originalContent.length * 0.5) {
+                      console.warn(`Fixer output for ${fix.file} is suspiciously small (${fix.content.length} vs original ${originalContent.length}), skipping`);
+                      continue;
+                    }
+                    const blobRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/blobs`, {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ content: fix.content, encoding: 'utf-8' })
+                    });
+                    if (!blobRes.ok) continue;
+                    const blobData = await blobRes.json();
+                    treeItems.push({ path: fix.file, mode: '100644', type: 'blob', sha: blobData.sha });
+                  }
+
+                  if (treeItems.length === 0) {
+                    console.log('No valid fixes to commit');
+                    return result.summary;
+                  }
+
+                  const newTreeRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/trees`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems })
+                  });
+                  const newTreeData = await newTreeRes.json();
+
+                  // 建立 commit
+                  const newCommitRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/commits`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      message: `fix: AI auto-fix round ${round} - ${result.summary}\n\n[skip-ai-review]`,
+                      tree: newTreeData.sha,
+                      parents: [latestSha]
+                    })
+                  });
+                  const newCommitData = await newCommitRes.json();
+
+                  // 更新 branch ref（force: false 防止覆蓋中間 push 的 commit）
+                  const refUpdateRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/refs/heads/${headBranch}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sha: newCommitData.sha, force: false })
+                  });
+                  if (!refUpdateRes.ok) {
+                    const refErr = await refUpdateRes.json();
+                    console.error(`Ref update failed (race condition?): ${refUpdateRes.status}`, refErr);
+                    return null;
+                  }
+
+                  console.log(`Fixer committed: ${newCommitData.sha}`);
+                }
+
+                return result.summary;
+              } catch (e) {
+                console.error(`Fixer failed: ${e.message}`);
+                return null;
+              }
+            }
+
+            // ========================================
+            // 5. Review-Fix Loop（最多 3 輪）
+            // 取得 PR 變更檔案清單（用於 Fixer allow-list）
+            const prFilesRes = await fetch(`https://api.github.com/repos/${repoFullName}/pulls/${prNumber}/files?per_page=300`, {
+              headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
+            });
+            const prChangedFiles = new Set();
+            if (prFilesRes.ok) {
+              const prFilesData = await prFilesRes.json();
+              for (const f of prFilesData) prChangedFiles.add(f.filename);
+              console.log(`PR changed files: ${prChangedFiles.size}`);
+            } else {
+              console.warn(`Failed to get PR files list: ${prFilesRes.status}, fixer will use issue-file fallback`);
+            }
+
+            // ========================================
+            let round = 0;
+            let hasFixes = false;
+            let passed = false;
+            const roundResults = [];
+
+            while (round < 3 && !passed) {
+              round++;
+              console.log(`\n=== Round ${round} ===`);
+
+              // 兩個 Reviewer 並行
+              const [claudeResult, openaiResult] = await Promise.all([
+                claudeReview(diff, round),
+                openaiReview(diff, round)
+              ]);
+
+              console.log(`Claude: passed=${claudeResult.passed}, issues=${claudeResult.issues?.length || 0}, error=${!!claudeResult.error}`);
+              console.log(`OpenAI: passed=${openaiResult.passed}, issues=${openaiResult.issues?.length || 0}, error=${!!openaiResult.error}`);
+
+              const roundInfo = { round, claude: claudeResult, openai: openaiResult, fixSummary: null };
+
+              // 兩個 Reviewer 都失敗 → 視為 review failure（不是 pass）
+              if (claudeResult.error && openaiResult.error) {
+                console.error('Both reviewers errored — treating as review failure');
+                roundResults.push(roundInfo);
+                break;  // 跳出迴圈，走 Failed 路徑
+              }
+
+              // 兩個都 pass 才算通過（error=true 的 reviewer 算 pass 是容錯，但上面已排除雙 error）
+              if (claudeResult.passed && openaiResult.passed) {
+                passed = true;
+                roundResults.push(roundInfo);
+                break;
+              }
+
+              // 合併問題 → Fixer
+              const allIssues = mergeIssues(claudeResult.issues || [], openaiResult.issues || []);
+              console.log(`Merged issues: ${allIssues.length}`);
+
+              if (allIssues.length > 0) {
+                const fixSummary = await fixerFix(allIssues, round);
+                roundInfo.fixSummary = fixSummary;
+                if (fixSummary) {
+                  hasFixes = true;
+                  // 等待 GitHub 處理 commit，然後取得最新 diff
+                  await new Promise(r => setTimeout(r, 3000));
+                  diff = await getPRDiff();
+                  if (!diff) {
+                    console.error('Failed to get updated diff after fix');
+                    roundResults.push(roundInfo);
+                    break;
+                  }
+                }
+              }
+
+              roundResults.push(roundInfo);
+            }
+
+            console.log(`\nResult: passed=${passed}, hasFixes=${hasFixes}, rounds=${round}`);
+
+            // ========================================
+            // 6. 留 PR comment（每輪結果摘要）
+            // ========================================
+            let prComment = `## 🤖 AI Code Review Results\n\n`;
+            prComment += `| | 結果 |\n|---|---|\n`;
+            prComment += `| Review Mode | ${reviewMode} |\n`;
+            prComment += `| Rounds | ${round} |\n`;
+            prComment += `| Final | ${passed ? '✅ Passed' : '❌ Failed'} |\n`;
+            prComment += `| Auto-fixed | ${hasFixes ? 'Yes' : 'No'} |\n\n`;
+
+            for (const r of roundResults) {
+              prComment += `### Round ${r.round}\n\n`;
+              prComment += `**Claude Reviewer**: ${r.claude.passed ? '✅ Pass' : '❌ Fail'} — ${r.claude.summary || 'N/A'}\n`;
+              if (r.claude.issues?.length > 0) {
+                prComment += `<details><summary>Issues (${r.claude.issues.length})</summary>\n\n`;
+                for (const issue of r.claude.issues) {
+                  prComment += `- \`[${issue.severity}]\` **${issue.file}:${issue.line}** — ${issue.description}\n`;
+                }
+                prComment += `\n</details>\n\n`;
+              }
+
+              prComment += `**OpenAI Reviewer**: ${r.openai.passed ? '✅ Pass' : '❌ Fail'} — ${r.openai.summary || 'N/A'}\n`;
+              if (r.openai.issues?.length > 0) {
+                prComment += `<details><summary>Issues (${r.openai.issues.length})</summary>\n\n`;
+                for (const issue of r.openai.issues) {
+                  prComment += `- \`[${issue.severity}]\` **${issue.file}:${issue.line}** — ${issue.description}\n`;
+                }
+                prComment += `\n</details>\n\n`;
+              }
+
+              if (r.fixSummary) {
+                prComment += `**Fixer**: ${r.fixSummary}\n\n`;
+              }
+            }
+
+            // 未解決問題（最後一輪的 issues）
+            if (!passed && roundResults.length > 0) {
+              const lastRound = roundResults[roundResults.length - 1];
+              const remaining = mergeIssues(lastRound.claude.issues || [], lastRound.openai.issues || []);
+              if (remaining.length > 0) {
+                prComment += `### ⚠️ 未解決問題\n\n`;
+                for (const issue of remaining) {
+                  prComment += `- \`[${issue.severity}]\` **${issue.file}:${issue.line}** — ${issue.description}\n  建議：${issue.suggestion}\n`;
+                }
+              }
+            }
+
+            await github.rest.issues.createComment({
+              owner: repoOwner, repo: repoName, issue_number: prNumber,
+              body: prComment
+            });
+
+            // ========================================
+            // 7. 根據結果 + Review Mode 決定後續
+            // ========================================
+            if (passed && !hasFixes) {
+              // Clean Pass — 第一輪通過，沒改東西
+              if (reviewMode === 'AI Only') {
+                // 自動 squash merge
+                try {
+                  await github.rest.pulls.merge({
+                    owner: repoOwner, repo: repoName, pull_number: prNumber,
+                    merge_method: 'squash'
+                  });
+                  console.log('Auto-merged PR (AI Only, Clean Pass)');
+                } catch (e) {
+                  console.error(`Auto-merge failed: ${e.message}`);
+                  // Fallback：通知 Developer 手動 merge
+                  const devUsers = card._developers || [];
+                  if (devUsers.length > 0) {
+                    const richText = [];
+                    for (let i = 0; i < devUsers.length; i++) {
+                      richText.push({ type: 'mention', mention: { type: 'user', user: { id: devUsers[i].id } } });
+                      if (i < devUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                    }
+                    richText.push({ type: 'text', text: { content: ` AI Review 已通過，但自動 merge 失敗，請手動 merge PR\n${prUrl}` } });
+                    await addNotionComment(cardPageId, richText);
+                  }
+                }
+              } else {
+                // Human Review → TECH REVIEW + 通知 Tech Reviewer
+                if (taskType === 'sprint') {
+                  await safeUpdateStatus(cardPageId, 'TECH REVIEW');
+                }
+
+                const techReviewers = card._techReviewers || [];
+                if (techReviewers.length > 0) {
+                  const richText = [];
+                  for (let i = 0; i < techReviewers.length; i++) {
+                    richText.push({ type: 'mention', mention: { type: 'user', user: { id: techReviewers[i].id } } });
+                    if (i < techReviewers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                  }
+                  richText.push({ type: 'text', text: { content: ` AI Review 已通過，請進行 Code Review\n${prUrl}` } });
+                  await addNotionComment(cardPageId, richText);
+                }
+              }
+
+            } else if (passed && hasFixes) {
+              // Fixed Pass — 有修改後通過
+              if (reviewMode === 'AI Only') {
+                // 自動 squash merge
+                try {
+                  await github.rest.pulls.merge({
+                    owner: repoOwner, repo: repoName, pull_number: prNumber,
+                    merge_method: 'squash'
+                  });
+                  console.log('Auto-merged PR (AI Only, Fixed Pass)');
+                } catch (e) {
+                  console.error(`Auto-merge failed: ${e.message}`);
+                  const devUsers = card._developers || [];
+                  if (devUsers.length > 0) {
+                    const richText = [];
+                    for (let i = 0; i < devUsers.length; i++) {
+                      richText.push({ type: 'mention', mention: { type: 'user', user: { id: devUsers[i].id } } });
+                      if (i < devUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                    }
+                    richText.push({ type: 'text', text: { content: ` AI Review 已通過並修正了部分程式碼，但自動 merge 失敗，請手動 merge PR\n${prUrl}` } });
+                    await addNotionComment(cardPageId, richText);
+                  }
+                }
+              } else {
+                // Human Review → DEV IN PROGRESS + 通知 Developer
+                if (taskType === 'sprint') {
+                  await safeUpdateStatus(cardPageId, 'DEV IN PROGRESS');
+                }
+
+                const devUsers = card._developers || [];
+                if (devUsers.length > 0) {
+                  const richText = [];
+                  for (let i = 0; i < devUsers.length; i++) {
+                    richText.push({ type: 'mention', mention: { type: 'user', user: { id: devUsers[i].id } } });
+                    if (i < devUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                  }
+                  richText.push({ type: 'text', text: { content: ` AI Review 已通過並自動修正了部分程式碼，請確認 AI 修改內容，若沒問題則點選 Re-request review 按鈕通知 Tech Reviewer\n${prUrl}` } });
+                  await addNotionComment(cardPageId, richText);
+                }
+              }
+
+            } else {
+              // Failed — 3 輪都失敗
+              if (taskType === 'sprint') {
+                await safeUpdateStatus(cardPageId, 'DEV IN PROGRESS');
+              }
+
+              const devUsers = card._developers || [];
+              if (devUsers.length > 0) {
+                const richText = [];
+                for (let i = 0; i < devUsers.length; i++) {
+                  richText.push({ type: 'mention', mention: { type: 'user', user: { id: devUsers[i].id } } });
+                  if (i < devUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                }
+                richText.push({ type: 'text', text: { content: ` AI Review 未能完全修復所有問題，請確認 AI 修改內容與未解決的問題，修正後點選 Re-request review 按鈕通知 Tech Reviewer\n${prUrl}` } });
+                await addNotionComment(cardPageId, richText);
+              }
+            }
+
+            console.log('AI Code Review completed');
+
+      - name: Fallback on failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
+          PR_URL: ${{ inputs.pr_url }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_BRANCH: ${{ inputs.head_branch }}
+          REPO_FULL_NAME: ${{ inputs.repo_full_name }}
+        with:
+          script: |
+            const notionKey = process.env.NOTION_API_KEY;
+            const sprintDbId = process.env.NOTION_DATABASE_ID;
+            const fixTaskDbId = process.env.FIX_TASK_DB_ID;
+            const prUrl = process.env.PR_URL;
+            const prNumber = parseInt(process.env.PR_NUMBER);
+            const headBranch = process.env.HEAD_BRANCH;
+            const repoFullName = process.env.REPO_FULL_NAME;
+            const [repoOwner, repoName] = repoFullName.split('/');
+
+            const notionHeaders = {
+              'Authorization': `Bearer ${notionKey}`,
+              'Notion-Version': '2022-06-28',
+              'Content-Type': 'application/json'
+            };
+
+            // 留 PR comment 說明 AI review 失敗
+            const runUrl = `https://github.com/${repoFullName}/actions/runs/${context.runId}`;
+            await github.rest.issues.createComment({
+              owner: repoOwner, repo: repoName, issue_number: prNumber,
+              body: `⚠️ AI Code Review workflow 執行失敗，請進行人工 Code Review\n\nPR: ${prUrl}\n[Workflow logs](${runUrl})`
+            });
+
+            // 嘗試設定 TECH REVIEW + 通知（best effort）
+            const sbMatch = headBranch.match(/SB-(\d+)/i);
+            const fixMatch = headBranch.match(/FIX-(\d+)/i);
+
+            if (sbMatch) {
+              const taskIdNumber = parseInt(sbMatch[1]);
+              try {
+                const queryRes = await fetch(`https://api.notion.com/v1/databases/${sprintDbId}/query`, {
+                  method: 'POST', headers: notionHeaders,
+                  body: JSON.stringify({ filter: { property: 'Task ID', unique_id: { equals: taskIdNumber } } })
+                });
+                if (queryRes.ok) {
+                  const queryData = await queryRes.json();
+                  if (queryData.results?.length > 0) {
+                    let card = queryData.results[0];
+                    const cardType = card.properties?.['Card Type']?.select?.name;
+
+                    // Feature Hub → find matching Repo Execution child
+                    if (cardType === 'Feature Hub') {
+                      const subItems = card.properties['Sub-item']?.relation || [];
+                      for (const subRef of subItems) {
+                        const subRes = await fetch(`https://api.notion.com/v1/pages/${subRef.id}`, { headers: notionHeaders });
+                        if (subRes.ok) {
+                          const subPage = await subRes.json();
+                          const subRepo = subPage.properties?.['GitHub Repo']?.select?.name;
+                          const subBranch = subPage.properties?.['GitHub Branch']?.rich_text?.[0]?.plain_text || '';
+                          if (subRepo === repoName && subBranch === headBranch) {
+                            card = subPage;
+                            break;
+                          }
+                        }
+                      }
+                    }
+
+                    await fetch(`https://api.notion.com/v1/pages/${card.id}`, {
+                      method: 'PATCH', headers: notionHeaders,
+                      body: JSON.stringify({ properties: { '任務狀態': { status: { name: 'TECH REVIEW' } } } })
+                    });
+                    console.log('Fallback: set TECH REVIEW');
+
+                    // 通知 Tech Reviewer
+                    let techReviewers = card.properties?.['Tech Reviewer']?.people || [];
+                    if (techReviewers.length === 0) {
+                      const parentRel = card.properties?.['Parent item']?.relation || [];
+                      if (parentRel.length > 0) {
+                        const parentRes = await fetch(`https://api.notion.com/v1/pages/${parentRel[0].id}`, { headers: notionHeaders });
+                        if (parentRes.ok) {
+                          const parentPage = await parentRes.json();
+                          techReviewers = parentPage.properties?.['Tech Reviewer']?.people || [];
+                        }
+                      }
+                    }
+                    if (techReviewers.length > 0) {
+                      const richText = [];
+                      for (let i = 0; i < techReviewers.length; i++) {
+                        richText.push({ type: 'mention', mention: { type: 'user', user: { id: techReviewers[i].id } } });
+                        if (i < techReviewers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                      }
+                      richText.push({ type: 'text', text: { content: ` AI Review workflow 失敗，請直接進行人工 Code Review\n${prUrl}` } });
+                      await fetch('https://api.notion.com/v1/comments', {
+                        method: 'POST', headers: notionHeaders,
+                        body: JSON.stringify({ parent: { page_id: card.id }, rich_text: richText })
+                      });
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error(`Fallback failed: ${e.message}`);
+              }
+            } else if (fixMatch) {
+              const fixTaskIdNumber = parseInt(fixMatch[1]);
+              try {
+                const queryRes = await fetch(`https://api.notion.com/v1/databases/${fixTaskDbId}/query`, {
+                  method: 'POST', headers: notionHeaders,
+                  body: JSON.stringify({ filter: { property: 'Fix Task ID', unique_id: { equals: fixTaskIdNumber } } })
+                });
+                if (queryRes.ok) {
+                  const queryData = await queryRes.json();
+                  if (queryData.results?.length > 0) {
+                    const fixCard = queryData.results[0];
+
+                    // 通知修復者
+                    const fixers = fixCard.properties?.['修復者']?.people || [];
+                    if (fixers.length > 0) {
+                      const richText = [];
+                      for (let i = 0; i < fixers.length; i++) {
+                        richText.push({ type: 'mention', mention: { type: 'user', user: { id: fixers[i].id } } });
+                        if (i < fixers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                      }
+                      richText.push({ type: 'text', text: { content: ` AI Review workflow 失敗，請直接進行人工 Code Review\n${prUrl}` } });
+                      await fetch('https://api.notion.com/v1/comments', {
+                        method: 'POST', headers: notionHeaders,
+                        body: JSON.stringify({ parent: { page_id: fixCard.id }, rich_text: richText })
+                      });
+                    }
+                    console.log('Fallback: notified Fix Task fixers');
+                  }
+                }
+              } catch (e) {
+                console.error(`Fallback (FIX-) failed: ${e.message}`);
+              }
+            }
+
+            console.log('Fallback handler completed');

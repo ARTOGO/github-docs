@@ -86,6 +86,98 @@ jobs:
             }
 
             // ========================================
+            // Helper：讀取 Notion page content（block children，含分頁）
+            // ========================================
+            async function getPageContent(pageId, depth = 0) {
+              if (depth > 2) return ''; // 防止過深遞迴
+              const allBlocks = [];
+              let startCursor = undefined;
+              do {
+                const url = `https://api.notion.com/v1/blocks/${pageId}/children` + (startCursor ? `?start_cursor=${startCursor}` : '');
+                const result = await notionFetch(url, { headers: notionHeaders });
+                if (!result.ok) break;
+                const data = await result.json();
+                if (!data?.results) break;
+                allBlocks.push(...data.results);
+                startCursor = data.has_more ? data.next_cursor : undefined;
+              } while (startCursor);
+
+              const supportedTypes = ['paragraph', 'bulleted_list_item', 'numbered_list_item',
+                'heading_1', 'heading_2', 'heading_3', 'to_do', 'toggle'];
+              const lines = [];
+              for (const b of allBlocks) {
+                if (!supportedTypes.includes(b.type)) continue;
+                const texts = b[b.type]?.rich_text || [];
+                const line = texts.map(t => t.plain_text).join('');
+                if (line.length > 0) lines.push(line);
+                // 遞迴讀取有子項的 block（toggle、nested list 等）
+                if (b.has_children) {
+                  const childContent = await getPageContent(b.id, depth + 1);
+                  if (childContent) lines.push(childContent);
+                }
+              }
+              return lines.join('\n');
+            }
+
+            // ========================================
+            // Helper：呼叫 Claude API 產生開發 prompt
+            // ========================================
+            async function generateDevPrompt(featureContent, siblingRepos, repoContent, repoNameArg, branchNameArg) {
+              const systemPrompt = '你是一位技術 PM。根據需求為開發者產生可直接用於 AI 輔助開發的 prompt。你需要理解整個功能的全貌，然後只針對本 Repo 負責的部分產生 prompt。用繁體中文撰寫。';
+              const siblingInfo = siblingRepos.length > 0
+                ? `本功能涉及的所有 Repo：${siblingRepos.join('、')}`
+                : '（本功能僅涉及單一 Repo）';
+              const userPrompt = `
+## 功能需求（來自 Feature Hub）
+${featureContent || '（無 Feature Hub，此為獨立任務）'}
+
+## 相關 Repo 列表
+${siblingInfo}
+
+## 本 Repo 任務（來自 Repo Execution）
+${repoContent}
+
+## Context
+- Repo: ${repoNameArg}
+- Branch: ${branchNameArg}
+
+重要：只針對本 Repo（${repoNameArg}）負責的部分產生 prompt，不要混入其他 repo 的工作，但要標明介面點。
+
+請產生一份開發 prompt，格式如下：
+1. 任務摘要（2-3 句話，說明整體功能以及本 repo 在其中的角色）
+2. 具體實作項目（checklist，僅限本 repo 負責的部分）
+3. 與其他 Repo 的介面約定（API endpoint、request/response 格式、共用 schema 等）
+4. 技術注意事項（相依性、順序、注意事項）
+5. 驗收標準（本 repo 可獨立驗證的項目）`;
+
+              try {
+                const res = await fetch('https://api.anthropic.com/v1/messages', {
+                  method: 'POST',
+                  headers: {
+                    'x-api-key': anthropicKey,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: 2048,
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: userPrompt }]
+                  })
+                });
+                if (!res.ok) {
+                  console.error(`Claude API error: ${res.status}`);
+                  return null;
+                }
+                const data = await res.json();
+                return data.content?.[0]?.text || null;
+              } catch (e) {
+                console.error(`Claude API call failed: ${e.message}`);
+                return null;
+              }
+            }
+
+            // ========================================
             // 功能 1：自動建立 Branch
             // ========================================
             console.log('=== 功能 1：自動建立 Branch ===');
@@ -132,6 +224,7 @@ jobs:
 
               // Check for Feature Hub parent → use parent's Task ID for branch naming
               let branchTaskId = taskId;
+              let parentCardType = null;
               const parentRelation = page.properties['Parent item']?.relation || [];
               if (parentRelation.length > 0) {
                 const parentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, {
@@ -139,7 +232,7 @@ jobs:
                 });
                 if (parentRes.ok) {
                   const parentPage = await parentRes.json();
-                  const parentCardType = parentPage.properties?.['Card Type']?.select?.name;
+                  parentCardType = parentPage.properties?.['Card Type']?.select?.name;
                   if (parentCardType === 'Feature Hub') {
                     const parentTaskIdObj = parentPage.properties['Task ID'];
                     const parentId = parentTaskIdObj?.unique_id ?
@@ -221,6 +314,114 @@ jobs:
               });
               if (notionRes.ok) console.log(`Updated Notion with branch: ${branchName}`);
               else console.error(`Failed to update Notion:`, await notionRes.json());
+
+              // === AI Prompt Generator ===
+              // 冪等性檢查：若已有 AI Dev Prompt，跳過
+              const existingPrompt = page.properties['AI Dev Prompt']?.rich_text?.[0]?.plain_text || '';
+              if (existingPrompt) {
+                console.log(`Skip AI Dev Prompt: already exists for ${taskId}`);
+              } else {
+                // 1. 讀取需求來源 + 兄弟 repo 列表（重用上方已 fetch 的 parent 資料）
+                let featureContent = '';
+                let siblingRepos = [];
+                // parentRelation 和 parentPage 已在 branch naming 區塊取得（若有 Feature Hub parent）
+                if (parentRelation.length > 0 && parentCardType === 'Feature Hub') {
+                  // 重新 fetch parent 以取得完整 properties（上方可能只取了 Task ID）
+                  const promptParentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, { headers: notionHeaders });
+                  if (promptParentRes.ok) {
+                    const promptParentPage = await promptParentRes.json();
+                    const parentTitle = promptParentPage.properties['項目']?.title?.[0]?.plain_text || '';
+                    const parentBody = await getPageContent(parentRelation[0].id);
+                    featureContent = `Feature Hub: ${parentTitle}\n${parentBody}`;
+
+                    // 收集所有兄弟 Repo Execution 的 repo 名稱
+                    const subItems = promptParentPage.properties['Sub-item']?.relation || [];
+                    for (const subRef of subItems) {
+                      const siblingRes = await notionFetch(`https://api.notion.com/v1/pages/${subRef.id}`, { headers: notionHeaders });
+                      if (siblingRes.ok) {
+                        const siblingPage = await siblingRes.json();
+                        const siblingRepo = siblingPage.properties?.['GitHub Repo']?.select?.name;
+                        if (siblingRepo && !siblingRepos.includes(siblingRepo)) {
+                          siblingRepos.push(siblingRepo);
+                        }
+                      }
+                    }
+                    console.log(`  Feature Hub siblings: ${siblingRepos.join(', ')}`);
+                  }
+                }
+
+                const cardTitle = page.properties['項目']?.title?.[0]?.plain_text || '';
+                const cardBody = await getPageContent(page.id);
+                const repoContent = `Repo Execution: ${cardTitle}\n${cardBody}`;
+
+                // 2. 呼叫 Claude 產生 prompt
+                const promptResult = await generateDevPrompt(featureContent, siblingRepos, repoContent, repoName, branchName);
+
+                // 3. 回寫到 Notion
+                if (promptResult) {
+                  const writeRes = await notionFetch(`https://api.notion.com/v1/pages/${page.id}`, {
+                    method: 'PATCH', headers: notionHeaders,
+                    body: JSON.stringify({
+                      properties: {
+                        'AI Dev Prompt': {
+                          rich_text: [{ text: { content: promptResult.substring(0, 2000) } }]
+                        }
+                      }
+                    })
+                  });
+                  if (writeRes.ok) console.log(`AI Dev Prompt written for ${taskId}`);
+                  else console.error(`Failed to write AI Dev Prompt:`, await writeRes.json());
+
+                  // 超過 2000 字元時，完整版寫到 comment（每段不超過 2000 字，避免切斷 surrogate pair）
+                  if (promptResult.length > 2000) {
+                    const fullText = `📝 AI Dev Prompt（完整版）：\n\n${promptResult}`;
+                    const chunks = [];
+                    let pos = 0;
+                    while (pos < fullText.length) {
+                      let end = Math.min(pos + 2000, fullText.length);
+                      // 避免切斷 surrogate pair（高位元在 0xD800-0xDBFF）
+                      if (end < fullText.length && fullText.charCodeAt(end - 1) >= 0xD800 && fullText.charCodeAt(end - 1) <= 0xDBFF) {
+                        end--;
+                      }
+                      chunks.push({ type: 'text', text: { content: fullText.substring(pos, end) } });
+                      pos = end;
+                    }
+                    await notionFetch('https://api.notion.com/v1/comments', {
+                      method: 'POST', headers: notionHeaders,
+                      body: JSON.stringify({ parent: { page_id: page.id }, rich_text: chunks })
+                    });
+                    console.log(`  Full prompt written to comment (${promptResult.length} chars)`);
+                  }
+                } else {
+                  console.warn(`AI Dev Prompt generation failed for ${taskId}, branch still created`);
+                }
+
+                // 4. 通知 Developer
+                const developers = page.properties['Developer']?.people || [];
+                const assignees = page.properties['指派給']?.people || [];
+                const notifyUsers = developers.length > 0 ? developers : assignees;
+
+                if (notifyUsers.length > 0) {
+                  const richText = [];
+                  for (let i = 0; i < notifyUsers.length; i++) {
+                    richText.push({ type: 'mention', mention: { type: 'user', user: { id: notifyUsers[i].id } } });
+                    if (i < notifyUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                  }
+
+                  const hasPrompt = promptResult ? '\n已自動產生 AI Dev Prompt，可直接複製至本機使用 claude -p 進行開發' : '';
+                  richText.push({
+                    type: 'text',
+                    text: { content: ` Branch 已建立：${branchName}${hasPrompt}` }
+                  });
+
+                  const notifyRes = await notionFetch('https://api.notion.com/v1/comments', {
+                    method: 'POST', headers: notionHeaders,
+                    body: JSON.stringify({ parent: { page_id: page.id }, rich_text: richText })
+                  });
+                  if (notifyRes.ok) console.log(`Notified developer about branch and AI Dev Prompt`);
+                  else console.error(`Failed to notify developer:`, await notifyRes.json());
+                }
+              } // end of AI Prompt Generator
             }
             
             // ========================================
