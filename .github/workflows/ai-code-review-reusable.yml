@@ -348,32 +348,34 @@ jobs:
             // ========================================
             // 4. Reviewer + Fixer 函式
             // ========================================
-            const reviewerPrompt = `你是一位資深 Code Reviewer。請審查以下 PR diff。
-
-請用以下 JSON 格式回應（不要加 markdown code fence）：
-{
-  "passed": true/false,
-  "issues": [
-    {
-      "file": "path/to/file",
-      "line": 42,
-      "severity": "error|warning|info",
-      "description": "問題描述",
-      "suggestion": "建議修改方式"
-    }
-  ],
-  "summary": "整體評估摘要"
-}
-
-審查重點：
-- 邏輯錯誤與 bug
-- 安全性問題（OWASP Top 10）
-- 效能問題
-- 程式碼風格與可維護性
-- 錯誤處理是否完善
-
-只回報 error 和 warning 等級的問題。info 等級只在有重要建議時才加。
-若沒有問題，passed 設為 true，issues 設為空陣列。`;
+            const reviewerPrompt = [
+              '你是一位資深 Code Reviewer。請審查以下 PR diff。',
+              '',
+              '請用以下 JSON 格式回應（不要加 markdown code fence）：',
+              '{',
+              '  "passed": true/false,',
+              '  "issues": [',
+              '    {',
+              '      "file": "path/to/file",',
+              '      "line": 42,',
+              '      "severity": "error|warning|info",',
+              '      "description": "問題描述",',
+              '      "suggestion": "建議修改方式"',
+              '    }',
+              '  ],',
+              '  "summary": "整體評估摘要"',
+              '}',
+              '',
+              '審查重點：',
+              '- 邏輯錯誤與 bug',
+              '- 安全性問題（OWASP Top 10）',
+              '- 效能問題',
+              '- 程式碼風格與可維護性',
+              '- 錯誤處理是否完善',
+              '',
+              '只回報 error 和 warning 等級的問題。info 等級只在有重要建議時才加。',
+              '若沒有問題，passed 設為 true，issues 設為空陣列。'
+            ].join('\n');
 
             async function claudeReview(diffText, round) {
               try {
@@ -468,26 +470,28 @@ jobs:
                 `${i + 1}. [${issue.severity}] ${issue.file}:${issue.line}\n   問題：${issue.description}\n   建議：${issue.suggestion}`
               ).join('\n\n');
 
-              const fixerPrompt = `你是一位資深開發者。以下是兩位 Reviewer 發現的問題，請修正程式碼。
-
-規則：
-- 只修改 Reviewer 指出的問題
-- 不要做額外的重構或美化
-- 每個修改都要有明確對應的 issue
-- 回傳修改後的檔案內容
-
-請用以下 JSON 格式回應（不要加 markdown code fence）：
-{
-  "fixes": [
-    {
-      "file": "path/to/file",
-      "content": "完整的修改後檔案內容"
-    }
-  ],
-  "summary": "修改摘要"
-}
-
-只修改需要修改的檔案。content 必須是完整的檔案內容（不是 diff）。`;
+              const fixerPrompt = [
+                '你是一位資深開發者。以下是兩位 Reviewer 發現的問題，請修正程式碼。',
+                '',
+                '規則：',
+                '- 只修改 Reviewer 指出的問題',
+                '- 不要做額外的重構或美化',
+                '- 每個修改都要有明確對應的 issue',
+                '- 回傳修改後的檔案內容',
+                '',
+                '請用以下 JSON 格式回應（不要加 markdown code fence）：',
+                '{',
+                '  "fixes": [',
+                '    {',
+                '      "file": "path/to/file",',
+                '      "content": "完整的修改後檔案內容"',
+                '    }',
+                '  ],',
+                '  "summary": "修改摘要"',
+                '}',
+                '',
+                '只修改需要修改的檔案。content 必須是完整的檔案內容（不是 diff）。'
+              ].join('\n');
 
               // 讀取需要修改的檔案的當前內容
               const filesToRead = [...new Set(issues.map(i => i.file))];
