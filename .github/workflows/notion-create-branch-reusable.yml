@@ -68,6 +68,18 @@ jobs:
               return { ok: false, json: async () => ({ message: 'max retries exceeded' }) };
             }
 
+            async function notionRequest(endpoint, method = 'GET', body = null) {
+              const options = { method, headers: notionHeaders };
+              if (body) options.body = JSON.stringify(body);
+              const res = await notionFetch(`https://api.notion.com/v1${endpoint}`, options);
+              if (!res.ok) {
+                const err = await res.json();
+                console.error(`Notion API error: ${endpoint}`, err);
+                return null;
+              }
+              return res.json();
+            }
+
             async function queryNotionDb(dbId, filter) {
               const allResults = [];
               let startCursor = undefined;
@@ -93,10 +105,8 @@ jobs:
               const allBlocks = [];
               let startCursor = undefined;
               do {
-                const url = `https://api.notion.com/v1/blocks/${pageId}/children` + (startCursor ? `?start_cursor=${startCursor}` : '');
-                const result = await notionFetch(url, { headers: notionHeaders });
-                if (!result.ok) break;
-                const data = await result.json();
+                const endpoint = `/blocks/${pageId}/children` + (startCursor ? `?start_cursor=${startCursor}` : '');
+                const data = await notionRequest(endpoint);
                 if (!data?.results) break;
                 allBlocks.push(...data.results);
                 startCursor = data.has_more ? data.next_cursor : undefined;
@@ -127,28 +137,29 @@ jobs:
               const siblingInfo = siblingRepos.length > 0
                 ? `本功能涉及的所有 Repo：${siblingRepos.join('、')}`
                 : '（本功能僅涉及單一 Repo）';
-              const userPrompt = `
-## 功能需求（來自 Feature Hub）
-${featureContent || '（無 Feature Hub，此為獨立任務）'}
-
-## 相關 Repo 列表
-${siblingInfo}
-
-## 本 Repo 任務（來自 Repo Execution）
-${repoContent}
-
-## Context
-- Repo: ${repoNameArg}
-- Branch: ${branchNameArg}
-
-重要：只針對本 Repo（${repoNameArg}）負責的部分產生 prompt，不要混入其他 repo 的工作，但要標明介面點。
-
-請產生一份開發 prompt，格式如下：
-1. 任務摘要（2-3 句話，說明整體功能以及本 repo 在其中的角色）
-2. 具體實作項目（checklist，僅限本 repo 負責的部分）
-3. 與其他 Repo 的介面約定（API endpoint、request/response 格式、共用 schema 等）
-4. 技術注意事項（相依性、順序、注意事項）
-5. 驗收標準（本 repo 可獨立驗證的項目）`;
+              const userPrompt = [
+                '## 功能需求（來自 Feature Hub）',
+                featureContent || '（無 Feature Hub，此為獨立任務）',
+                '',
+                '## 相關 Repo 列表',
+                siblingInfo,
+                '',
+                '## 本 Repo 任務（來自 Repo Execution）',
+                repoContent,
+                '',
+                '## Context',
+                '- Repo: ' + repoNameArg,
+                '- Branch: ' + branchNameArg,
+                '',
+                '重要：只針對本 Repo（' + repoNameArg + '）負責的部分產生 prompt，不要混入其他 repo 的工作，但要標明介面點。',
+                '',
+                '請產生一份開發 prompt，格式如下：',
+                '1. 任務摘要（2-3 句話，說明整體功能以及本 repo 在其中的角色）',
+                '2. 具體實作項目（checklist，僅限本 repo 負責的部分）',
+                '3. 與其他 Repo 的介面約定（API endpoint、request/response 格式、共用 schema 等）',
+                '4. 技術注意事項（相依性、順序、注意事項）',
+                '5. 驗收標準（本 repo 可獨立驗證的項目）'
+              ].join('\n');
 
               try {
                 const res = await fetch('https://api.anthropic.com/v1/messages', {
