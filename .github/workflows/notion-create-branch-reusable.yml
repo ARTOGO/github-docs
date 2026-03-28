@@ -113,10 +113,20 @@ jobs:
               } while (startCursor);
 
               const supportedTypes = ['paragraph', 'bulleted_list_item', 'numbered_list_item',
-                'heading_1', 'heading_2', 'heading_3', 'to_do', 'toggle'];
+                'heading_1', 'heading_2', 'heading_3', 'to_do', 'toggle',
+                'bookmark', 'embed', 'link_preview'];
               const lines = [];
               for (const b of allBlocks) {
                 if (!supportedTypes.includes(b.type)) continue;
+                // bookmark / embed / link_preview → 取 URL
+                if (['bookmark', 'embed', 'link_preview'].includes(b.type)) {
+                  const url = b[b.type]?.url;
+                  if (url) {
+                    const caption = (b[b.type]?.caption || []).map(t => t.plain_text).join('') || '';
+                    lines.push(caption ? `${caption}: ${url}` : url);
+                  }
+                  continue;
+                }
                 const texts = b[b.type]?.rich_text || [];
                 const line = texts.map(t => t.plain_text).join('');
                 if (line.length > 0) lines.push(line);
