@@ -114,10 +114,24 @@ jobs:
 
               const supportedTypes = ['paragraph', 'bulleted_list_item', 'numbered_list_item',
                 'heading_1', 'heading_2', 'heading_3', 'to_do', 'toggle',
-                'bookmark', 'embed', 'link_preview'];
+                'bookmark', 'embed', 'link_preview', 'external_object_instance'];
               const lines = [];
               for (const b of allBlocks) {
                 if (!supportedTypes.includes(b.type)) continue;
+                // external_object_instance → Figma embed 等外部物件
+                if (b.type === 'external_object_instance') {
+                  const eoi = b.external_object_instance || {};
+                  const url = eoi.url || eoi.external_object_url || eoi.uri || '';
+                  if (url) {
+                    lines.push(`[外部連結] ${url}`);
+                  } else {
+                    // fallback：dump 所有字串值以擷取 URL
+                    const vals = Object.values(eoi).filter(v => typeof v === 'string' && v.startsWith('http'));
+                    if (vals.length > 0) lines.push(`[外部連結] ${vals[0]}`);
+                    else console.log(`external_object_instance keys: ${JSON.stringify(Object.keys(eoi))}`);
+                  }
+                  continue;
+                }
                 // bookmark / embed / link_preview → 取 URL
                 if (['bookmark', 'embed', 'link_preview'].includes(b.type)) {
                   const url = b[b.type]?.url;
