@@ -198,7 +198,7 @@ jobs:
             }
 
             async function generateDevPrompt(featureContent, siblingRepos, repoContent, repoNameArg, branchNameArg, figmaUrl) {
-              const systemPrompt = '你是一位技術 PM。根據需求為開發者產生可直接用於 AI 輔助開發的 prompt。你需要理解整個功能的全貌，然後只針對本 Repo 負責的部分產生 prompt。用繁體中文撰寫。';
+              const systemPrompt = '你是一位技術 PM。根據需求整理出簡潔的開發需求規格，給 AI Agent 的 PM 階段使用。不要設計架構、不要規劃具體檔案或 API，只描述「要做什麼」和「做到什麼程度算完成」。後續的架構設計、UI 設計、開發實作會由 AI Agent 依照開發流程自行規劃。用繁體中文撰寫。';
               const siblingInfo = siblingRepos.length > 0
                 ? `本功能涉及的所有 Repo：${siblingRepos.join('、')}`
                 : '（本功能僅涉及單一 Repo）';
@@ -220,15 +220,14 @@ jobs:
                 '- Repo: ' + repoNameArg,
                 '- Branch: ' + branchNameArg,
                 '',
-                '重要：只針對本 Repo（' + repoNameArg + '）負責的部分產生 prompt，不要混入其他 repo 的工作，但要標明介面點。',
-                figmaUrl ? '重要：開發者必須參考 Figma 設計稿進行實作，請在 prompt 中提醒開發者參照 Figma 連結。' : '',
+                '重要：只針對本 Repo（' + repoNameArg + '）負責的部分整理需求，不要混入其他 repo 的工作。',
+                figmaUrl ? '重要：有 Figma 設計稿，請在需求中提醒開發者必須參照 Figma 連結實作。' : '',
                 '',
-                '請產生一份開發 prompt，格式如下：',
+                '請產生一份需求規格，格式如下：',
                 '1. 任務摘要（2-3 句話，說明整體功能以及本 repo 在其中的角色）',
-                '2. 具體實作項目（checklist，僅限本 repo 負責的部分）',
-                '3. 與其他 Repo 的介面約定（API endpoint、request/response 格式、共用 schema 等）',
-                '4. 技術注意事項（相依性、順序、注意事項）',
-                '5. 驗收標準（本 repo 可獨立驗證的項目）'
+                '2. 需求項目（條列式，描述要做什麼，不要規劃怎麼做）',
+                '3. 與其他 Repo 的關係（如有，簡述相依性和介面邊界，不要設計具體 API schema）',
+                '4. 驗收標準（怎樣算完成）'
               ].join('\n');
               return await callClaudeAPI(systemPrompt, userPrompt);
             }
@@ -241,7 +240,7 @@ jobs:
             }
 
             async function generateWorkspacePrompt(featureContent, repoTasks, figmaUrl) {
-              const systemPrompt = '你是一位技術 PM。根據需求為 Workspace Agent 產生一份跨 repo 的完整開發 prompt。這份 prompt 會交給一個同時控制多個 repo 的 AI Agent 執行。用繁體中文撰寫。';
+              const systemPrompt = '你是一位技術 PM。根據需求整理出簡潔的跨 repo 開發需求規格，給 Workspace AI Agent 的 PM 階段使用。不要設計架構、不要規劃具體檔案或 API，只描述「要做什麼」和「做到什麼程度算完成」。後續的架構設計、UI 設計、開發實作會由 AI Agent 依照開發流程自行規劃。用繁體中文撰寫。';
               const figmaSection = figmaUrl
                 ? ['## Figma 設計稿', figmaUrl, '']
                 : [];
@@ -256,16 +255,13 @@ jobs:
                 '## 各 Repo 任務分工',
                 ...repoSections,
                 '',
-                '重要：這是 Workspace 模式，一個 AI Agent 會同時開發所有 repo。',
-                '不需要「跨 repo 介面約定」章節（因為同一個 agent 控制兩端），但要清楚標明每個 repo 負責什麼、改哪些檔案。',
-                figmaUrl ? '重要：開發者必須參考 Figma 設計稿進行實作，請在 prompt 中提醒開發者參照 Figma 連結。' : '',
+                '重要：這是 Workspace 模式，一個 AI Agent 會同時開發所有 repo，不需要跨 repo 介面約定。',
+                figmaUrl ? '重要：有 Figma 設計稿，請在需求中提醒開發者必須參照 Figma 連結實作。' : '',
                 '',
-                '請產生一份 Workspace 開發 prompt，格式如下：',
+                '請產生一份需求規格，格式如下：',
                 '1. 功能總覽（2-3 句話，說明完整功能）',
-                '2. 各 Repo 實作項目（按 repo 分組的 checklist，標明每個檔案屬於哪個 repo）',
-                '3. 開發順序建議（哪個 repo/模組先做、相依關係）',
-                '4. 技術注意事項（跨 repo 的資料流、共用型別、環境設定）',
-                '5. 驗收標準（整體功能的驗收項目）'
+                '2. 各 Repo 需求（按 repo 分組，描述要做什麼，不要規劃怎麼做）',
+                '3. 驗收標準（整體功能怎樣算完成）'
               ].join('\n');
               const result = await callClaudeAPI(systemPrompt, userPrompt, 4096);
               if (result && workflowTemplate) {
