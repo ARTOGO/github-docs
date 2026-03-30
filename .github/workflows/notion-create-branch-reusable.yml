@@ -156,14 +156,17 @@ jobs:
             // ========================================
             // Helper：呼叫 Claude API 產生開發 prompt
             // ========================================
-            // 讀取開發流程模板
-            const fs = require('fs');
-            const path = require('path');
+            // 讀取開發流程模板（從 github-docs repo 取得）
             let workflowTemplate = '';
             try {
-              workflowTemplate = fs.readFileSync(path.join(process.env.GITHUB_WORKSPACE || '.', 'docs/dev-workflow-template.md'), 'utf-8');
+              const templateRes = await fetch('https://raw.githubusercontent.com/ARTOGO/github-docs/main/docs/dev-workflow-template.md');
+              if (templateRes.ok) {
+                workflowTemplate = await templateRes.text();
+              } else {
+                console.warn(`dev-workflow-template.md fetch failed: ${templateRes.status}`);
+              }
             } catch (e) {
-              console.warn('dev-workflow-template.md not found, skipping workflow template');
+              console.warn(`dev-workflow-template.md fetch error: ${e.message}`);
             }
 
             async function callClaudeAPI(systemPrompt, userPrompt, maxTokens = 4096) {
@@ -556,7 +559,7 @@ jobs:
                     });
                     console.log(`  Full prompt written to comment (${promptResult.length} chars)`);
                   }
-                } else {
+                } else if (devMode !== 'Workspace') {
                   console.warn(`AI Dev Prompt generation failed for ${taskId}, branch still created`);
                 }
 
