@@ -156,15 +156,19 @@ jobs:
             // ========================================
             // Helper：呼叫 Claude API 產生開發 prompt
             // ========================================
-            async function generateDevPrompt(featureContent, siblingRepos, repoContent, repoNameArg, branchNameArg) {
+            async function generateDevPrompt(featureContent, siblingRepos, repoContent, repoNameArg, branchNameArg, figmaUrl) {
               const systemPrompt = '你是一位技術 PM。根據需求為開發者產生可直接用於 AI 輔助開發的 prompt。你需要理解整個功能的全貌，然後只針對本 Repo 負責的部分產生 prompt。用繁體中文撰寫。';
               const siblingInfo = siblingRepos.length > 0
                 ? `本功能涉及的所有 Repo：${siblingRepos.join('、')}`
                 : '（本功能僅涉及單一 Repo）';
+              const figmaSection = figmaUrl
+                ? ['## Figma 設計稿', figmaUrl, '']
+                : [];
               const userPrompt = [
                 '## 功能需求（來自 Feature Hub）',
                 featureContent || '（無 Feature Hub，此為獨立任務）',
                 '',
+                ...figmaSection,
                 '## 相關 Repo 列表',
                 siblingInfo,
                 '',
@@ -176,6 +180,7 @@ jobs:
                 '- Branch: ' + branchNameArg,
                 '',
                 '重要：只針對本 Repo（' + repoNameArg + '）負責的部分產生 prompt，不要混入其他 repo 的工作，但要標明介面點。',
+                figmaUrl ? '重要：開發者必須參考 Figma 設計稿進行實作，請在 prompt 中提醒開發者參照 Figma 連結。' : '',
                 '',
                 '請產生一份開發 prompt，格式如下：',
                 '1. 任務摘要（2-3 句話，說明整體功能以及本 repo 在其中的角色）',
@@ -389,8 +394,19 @@ jobs:
                 const cardBody = await getPageContent(page.id);
                 const repoContent = `Repo Execution: ${cardTitle}\n${cardBody}`;
 
+                // 讀取 Figma 連結（優先從 Repo Execution 卡片，fallback 到 Feature Hub）
+                let figmaUrl = page.properties['Figma']?.url || '';
+                if (!figmaUrl && parentRelation.length > 0 && parentCardType === 'Feature Hub') {
+                  const parentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, { headers: notionHeaders });
+                  if (parentRes.ok) {
+                    const parentPage = await parentRes.json();
+                    figmaUrl = parentPage.properties['Figma']?.url || '';
+                  }
+                }
+                if (figmaUrl) console.log(`  Figma URL: ${figmaUrl}`);
+
                 // 2. 呼叫 Claude 產生 prompt
-                const promptResult = await generateDevPrompt(featureContent, siblingRepos, repoContent, repoName, branchName);
+                const promptResult = await generateDevPrompt(featureContent, siblingRepos, repoContent, repoName, branchName, figmaUrl);
 
                 // 3. 回寫到 Notion
                 if (promptResult) {
