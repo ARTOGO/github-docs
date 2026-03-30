@@ -156,6 +156,44 @@ jobs:
             // ========================================
             // Helper：呼叫 Claude API 產生開發 prompt
             // ========================================
+            // 讀取開發流程模板
+            const fs = require('fs');
+            const path = require('path');
+            let workflowTemplate = '';
+            try {
+              workflowTemplate = fs.readFileSync(path.join(process.env.GITHUB_WORKSPACE || '.', 'docs/dev-workflow-template.md'), 'utf-8');
+            } catch (e) {
+              console.warn('dev-workflow-template.md not found, skipping workflow template');
+            }
+
+            async function callClaudeAPI(systemPrompt, userPrompt, maxTokens = 4096) {
+              try {
+                const res = await fetch('https://api.anthropic.com/v1/messages', {
+                  method: 'POST',
+                  headers: {
+                    'x-api-key': anthropicKey,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    model: 'claude-haiku-4-5-20251001',
+                    max_tokens: maxTokens,
+                    system: systemPrompt,
+                    messages: [{ role: 'user', content: userPrompt }]
+                  })
+                });
+                if (!res.ok) {
+                  console.error(`Claude API error: ${res.status}`);
+                  return null;
+                }
+                const data = await res.json();
+                return data.content?.[0]?.text || null;
+              } catch (e) {
+                console.error(`Claude API call failed: ${e.message}`);
+                return null;
+              }
+            }
+
             async function generateDevPrompt(featureContent, siblingRepos, repoContent, repoNameArg, branchNameArg, figmaUrl) {
               const systemPrompt = '你是一位技術 PM。根據需求為開發者產生可直接用於 AI 輔助開發的 prompt。你需要理解整個功能的全貌，然後只針對本 Repo 負責的部分產生 prompt。用繁體中文撰寫。';
               const siblingInfo = siblingRepos.length > 0
@@ -189,6 +227,49 @@ jobs:
                 '4. 技術注意事項（相依性、順序、注意事項）',
                 '5. 驗收標準（本 repo 可獨立驗證的項目）'
               ].join('\n');
+              return await callClaudeAPI(systemPrompt, userPrompt);
+            }
+
+            async function appendWorkflowTemplate(prompt) {
+              if (prompt && workflowTemplate) {
+                return prompt + '\n\n---\n\n' + workflowTemplate;
+              }
+              return prompt;
+            }
+
+            async function generateWorkspacePrompt(featureContent, repoTasks, figmaUrl) {
+              const systemPrompt = '你是一位技術 PM。根據需求為 Workspace Agent 產生一份跨 repo 的完整開發 prompt。這份 prompt 會交給一個同時控制多個 repo 的 AI Agent 執行。用繁體中文撰寫。';
+              const figmaSection = figmaUrl
+                ? ['## Figma 設計稿', figmaUrl, '']
+                : [];
+              const repoSections = repoTasks.map(rt =>
+                ['### ' + rt.repo + '（Branch: ' + rt.branch + '）', rt.content].join('\n')
+              );
+              const userPrompt = [
+                '## 功能需求（來自 Feature Hub）',
+                featureContent,
+                '',
+                ...figmaSection,
+                '## 各 Repo 任務分工',
+                ...repoSections,
+                '',
+                '重要：這是 Workspace 模式，一個 AI Agent 會同時開發所有 repo。',
+                '不需要「跨 repo 介面約定」章節（因為同一個 agent 控制兩端），但要清楚標明每個 repo 負責什麼、改哪些檔案。',
+                figmaUrl ? '重要：開發者必須參考 Figma 設計稿進行實作，請在 prompt 中提醒開發者參照 Figma 連結。' : '',
+                '',
+                '請產生一份 Workspace 開發 prompt，格式如下：',
+                '1. 功能總覽（2-3 句話，說明完整功能）',
+                '2. 各 Repo 實作項目（按 repo 分組的 checklist，標明每個檔案屬於哪個 repo）',
+                '3. 開發順序建議（哪個 repo/模組先做、相依關係）',
+                '4. 技術注意事項（跨 repo 的資料流、共用型別、環境設定）',
+                '5. 驗收標準（整體功能的驗收項目）'
+              ].join('\n');
+              const result = await callClaudeAPI(systemPrompt, userPrompt, 4096);
+              if (result && workflowTemplate) {
+                return result + '\n\n---\n\n' + workflowTemplate;
+              }
+              return result;
+            }
 
               try {
                 const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -361,20 +442,21 @@ jobs:
               if (existingPrompt) {
                 console.log(`Skip AI Dev Prompt: already exists for ${taskId}`);
               } else {
-                // 1. 讀取需求來源 + 兄弟 repo 列表（重用上方已 fetch 的 parent 資料）
+                // 讀取 Feature Hub parent 資料
                 let featureContent = '';
                 let siblingRepos = [];
-                // parentRelation 和 parentPage 已在 branch naming 區塊取得（若有 Feature Hub parent）
+                let devMode = '';
+                let promptParentPage = null;
+
                 if (parentRelation.length > 0 && parentCardType === 'Feature Hub') {
-                  // 重新 fetch parent 以取得完整 properties（上方可能只取了 Task ID）
                   const promptParentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, { headers: notionHeaders });
                   if (promptParentRes.ok) {
-                    const promptParentPage = await promptParentRes.json();
+                    promptParentPage = await promptParentRes.json();
                     const parentTitle = promptParentPage.properties['項目']?.title?.[0]?.plain_text || '';
                     const parentBody = await getPageContent(parentRelation[0].id);
                     featureContent = `Feature Hub: ${parentTitle}\n${parentBody}`;
+                    devMode = promptParentPage.properties['Dev Mode']?.select?.name || 'Repo Split';
 
-                    // 收集所有兄弟 Repo Execution 的 repo 名稱
                     const subItems = promptParentPage.properties['Sub-item']?.relation || [];
                     for (const subRef of subItems) {
                       const siblingRes = await notionFetch(`https://api.notion.com/v1/pages/${subRef.id}`, { headers: notionHeaders });
@@ -386,27 +468,85 @@ jobs:
                         }
                       }
                     }
-                    console.log(`  Feature Hub siblings: ${siblingRepos.join(', ')}`);
+                    console.log(`  Feature Hub siblings: ${siblingRepos.join(', ')}, Dev Mode: ${devMode}`);
                   }
                 }
 
-                const cardTitle = page.properties['項目']?.title?.[0]?.plain_text || '';
-                const cardBody = await getPageContent(page.id);
-                const repoContent = `Repo Execution: ${cardTitle}\n${cardBody}`;
-
-                // 讀取 Figma 連結（優先從 Repo Execution 卡片，fallback 到 Feature Hub）
+                // 讀取 Figma 連結（優先 Repo Execution，fallback Feature Hub）
                 let figmaUrl = page.properties['Figma']?.url || '';
-                if (!figmaUrl && parentRelation.length > 0 && parentCardType === 'Feature Hub') {
-                  const parentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, { headers: notionHeaders });
-                  if (parentRes.ok) {
-                    const parentPage = await parentRes.json();
-                    figmaUrl = parentPage.properties['Figma']?.url || '';
-                  }
+                if (!figmaUrl && promptParentPage) {
+                  figmaUrl = promptParentPage.properties['Figma']?.url || '';
                 }
                 if (figmaUrl) console.log(`  Figma URL: ${figmaUrl}`);
 
-                // 2. 呼叫 Claude 產生 prompt
-                const promptResult = await generateDevPrompt(featureContent, siblingRepos, repoContent, repoName, branchName, figmaUrl);
+                let promptResult = null;
+
+                if (devMode === 'Workspace') {
+                  // Workspace 模式：prompt 寫在 Feature Hub，Repo Execution 不產
+                  const parentId = parentRelation[0].id;
+                  const parentExistingPrompt = promptParentPage?.properties['AI Dev Prompt']?.rich_text?.[0]?.plain_text || '';
+                  if (parentExistingPrompt) {
+                    console.log(`  Workspace prompt already exists on Feature Hub, skip`);
+                  } else {
+                    // 收集所有子卡的任務內容
+                    const repoTasks = [];
+                    const subItems = promptParentPage.properties['Sub-item']?.relation || [];
+                    for (const subRef of subItems) {
+                      const subRes = await notionFetch(`https://api.notion.com/v1/pages/${subRef.id}`, { headers: notionHeaders });
+                      if (!subRes.ok) continue;
+                      const subPage = await subRes.json();
+                      if (subPage.properties?.['Card Type']?.select?.name !== 'Repo Execution') continue;
+                      const subRepo = subPage.properties?.['GitHub Repo']?.select?.name || '';
+                      const subBranch = subPage.properties?.['GitHub Branch']?.rich_text?.[0]?.plain_text || '';
+                      const subTitle = subPage.properties['項目']?.title?.[0]?.plain_text || '';
+                      const subBody = await getPageContent(subRef.id);
+                      repoTasks.push({ repo: subRepo, branch: subBranch, content: `${subTitle}\n${subBody}` });
+                    }
+
+                    console.log(`  Generating Workspace prompt for ${repoTasks.length} repos`);
+                    const wsPrompt = await generateWorkspacePrompt(featureContent, repoTasks, figmaUrl);
+                    const finalPrompt = await appendWorkflowTemplate(wsPrompt);
+
+                    if (finalPrompt) {
+                      // 寫到 Feature Hub
+                      const writeRes = await notionFetch(`https://api.notion.com/v1/pages/${parentId}`, {
+                        method: 'PATCH', headers: notionHeaders,
+                        body: JSON.stringify({
+                          properties: {
+                            'AI Dev Prompt': { rich_text: [{ text: { content: finalPrompt.substring(0, 2000) } }] }
+                          }
+                        })
+                      });
+                      if (writeRes.ok) console.log(`  Workspace prompt written to Feature Hub`);
+
+                      // 超過 2000 字元寫 comment
+                      if (finalPrompt.length > 2000) {
+                        const fullText = `📝 AI Dev Prompt - Workspace（完整版）：\n\n${finalPrompt}`;
+                        const chunks = [];
+                        let pos = 0;
+                        while (pos < fullText.length) {
+                          let end = Math.min(pos + 2000, fullText.length);
+                          if (end < fullText.length && fullText.charCodeAt(end - 1) >= 0xD800 && fullText.charCodeAt(end - 1) <= 0xDBFF) end--;
+                          chunks.push({ type: 'text', text: { content: fullText.substring(pos, end) } });
+                          pos = end;
+                        }
+                        await notionFetch('https://api.notion.com/v1/comments', {
+                          method: 'POST', headers: notionHeaders,
+                          body: JSON.stringify({ parent: { page_id: parentId }, rich_text: chunks })
+                        });
+                        console.log(`  Full workspace prompt written to Feature Hub comment (${finalPrompt.length} chars)`);
+                      }
+                    }
+                  }
+                } else {
+                  // Repo Split 模式（預設）：prompt 寫在各 Repo Execution
+                  const cardTitle = page.properties['項目']?.title?.[0]?.plain_text || '';
+                  const cardBody = await getPageContent(page.id);
+                  const repoContent = `Repo Execution: ${cardTitle}\n${cardBody}`;
+
+                  const rawPrompt = await generateDevPrompt(featureContent, siblingRepos, repoContent, repoName, branchName, figmaUrl);
+                  promptResult = await appendWorkflowTemplate(rawPrompt);
+                }
 
                 // 3. 回寫到 Notion
                 if (promptResult) {
