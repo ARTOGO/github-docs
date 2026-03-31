@@ -52,13 +52,13 @@ git clone --single-branch --depth 1 https://github.com/alirezarezvani/claude-ski
 
 ## 複雜度判斷
 
-在開始前，先根據任務內容評估複雜度，決定每個階段的 agent 編制：
+在開始前，先根據任務內容評估複雜度，決定每個階段的 agent 編制和執行模式：
 
-| 複雜度 | 判斷標準 | agent 編制 |
-|--------|----------|-----------|
-| **高** | 跨 repo、涉及架構變更、新功能模組、資料庫 migration | 每階段 3 agent（2 討論 + 1 review） |
-| **中** | 單 repo 但多檔案、涉及 UI + API 變更 | 每階段 2 agent（1 執行 + 1 review） |
-| **低** | 單檔案修改、文案修正、config 調整、bug fix | 每階段 1 agent（自行完成 + 自我 review） |
+| 複雜度 | 判斷標準 | agent 編制 | 規劃模式 |
+|--------|----------|-----------|---------|
+| **高** | 跨 repo、涉及架構變更、新功能模組、資料庫 migration | 每階段 3 agent（2 討論 + 1 review） | Blue Team（建設）+ Red Team（挑戰）辯論  |
+| **中** | 單 repo 但多檔案、涉及 UI + API 變更 | 每階段 2 agent（1 執行 + 1 review） | 執行者 + 審查者  |
+| **低** | 單檔案修改、文案修正、config 調整、bug fix | 每階段 1 agent（自行完成 + 自我 review） | 單人執行 + 自我審查  |
 
 階段是否需要執行也由複雜度決定（見各階段說明）。
 
@@ -73,9 +73,11 @@ git clone --single-branch --depth 1 https://github.com/alirezarezvani/claude-ski
 > 所有任務都需要，但低複雜度任務可精簡為一份簡要需求確認。
 
 - 根據開發需求進行規劃，產出 PRD
+- **高複雜度**：Blue Team 提出方案 → Red Team 挑戰假設與邊界 → 辯論後產出最終 PRD
 - **建議 Skill**：
   - `gstack/office-hours` — 挑戰假設、釐清需求
   - `gstack/plan-ceo-review` — 審視 scope（擴大/聚焦/精簡）
+- **產出**：PRD 文件
 - **通過條件**：需求完整、邊界條件涵蓋、驗收標準明確
 
 ### 階段 2：UI/UX 設計
@@ -96,6 +98,7 @@ git clone --single-branch --depth 1 https://github.com/alirezarezvani/claude-ski
 > 中/高複雜度需要。低複雜度可跳過。
 
 - 針對如何在現有架構下開發（或需要 refactor）進行規劃
+- **高複雜度**：Blue Team 設計架構 → Red Team 質疑可行性與風險 → 辯論後鎖定方案
 - **建議 Skill**：
   - `gstack/plan-eng-review` — 架構、資料流、edge cases、測試覆蓋審查
   - `database-schema-designer` — 資料庫 schema 設計與 migration 規劃
@@ -109,6 +112,7 @@ git clone --single-branch --depth 1 https://github.com/alirezarezvani/claude-ski
 
 - 根據任務是否可分工，決定啟動 1 個或多個 Developer agent
 - 必須依照 PRD、UI/UX 設計、架構設計進行實作
+- **多 repo 分工模式**：前後端先約定 API Schema → 各自獨立開發（可先用 mock）→ 整合聯調
 - **建議 Skill（依任務類型選用）**：
   - `senior-frontend` — 前端開發（React/Next.js/TypeScript/Tailwind）
   - `senior-backend` — 後端開發（Node.js/Express/PostgreSQL/API 設計）
@@ -117,7 +121,7 @@ git clone --single-branch --depth 1 https://github.com/alirezarezvani/claude-ski
   - `email-template-builder` — 郵件模板開發
   - `docker-development` — 容器化開發（Dockerfile 優化、docker-compose）
   - `tdd-guide` — TDD 紅綠燈流程、測試產生、覆蓋率分析
-- **TDD 原則**：先寫失敗測試，再寫實作，最後重構
+- **TDD 原則**：先寫失敗測試，再寫實作，最後重構。不能先寫實作再補測試
 - **通過條件**：所有測試通過、程式碼符合設計規格
 
 ### 階段 5：全方位 Review
@@ -144,20 +148,52 @@ git clone --single-branch --depth 1 https://github.com/alirezarezvani/claude-ski
 - **失敗處理**：回到階段 4 修復，修復後重新 review
 - **上限**：同一階段超過 7 輪 review 未通過，暫停並回報
 
-### 階段 6：發 PR
+### 階段 6：驗證（Verification）
+
+> 所有任務都需要。Review 通過後，必須提出實際執行證據才能進入下一階段。
+
+驗證的目的是確保程式碼不只「看起來對」，而是「真的能跑」。
+
+- **前端驗證**：每個互動步驟都必須有截圖證據（初始狀態 → 操作中 → 回饋 → 結果）
+- **後端驗證**：執行真實的 API 呼叫（curl / HTTP client）驗證 Router/Middleware 接線正確
+- **整合驗證**：前後端串接後的端到端驗證
+- **通過條件**：所有截圖 / API 回應輸出已附上，功能行為與 PRD 一致
+
+### 階段 7：發 PR
 
 - 使用 `gstack/ship` 或手動執行：跑測試 → review diff → commit → push → 建 PR
-- PR description 包含：變更摘要、測試結果、review 通過紀錄
+- PR description 包含：變更摘要、測試結果、review 通過紀錄、驗證截圖/輸出
 - 確認 CI 通過
 
 ---
 
 ## 除錯
 
-若開發過程中遇到 bug 或非預期行為：
+若開發過程中遇到 bug 或非預期行為，**開發工作立即暫停**，進入除錯流程：
 
-- 使用 `gstack/investigate` 進行系統性除錯（四階段：調查 → 分析 → 假設 → 修復）
-- **鐵律**：找到 root cause 才修，不猜測
+- 使用 `gstack/investigate` 進行系統性除錯
+- **四階段流程**：調查（收集現象）→ 分析（找出模式）→ 假設（提出 root cause）→ 修復（實作驗證）
+- **鐵律**：找到 root cause 才修，不猜測。不允許「試試看改這裡會不會好」
+
+---
+
+## 強制標準
+
+以下標準適用於所有任務，必須在每個 agent 的工作中貫徹：
+
+### 測試標準
+
+- **核心邏輯覆蓋率 > 95%**，無例外
+- 必須包含：happy path、error cases、edge cases
+
+### 程式碼品質
+
+- **Linter 零警告**
+- 所有 API 呼叫必須有明確的錯誤處理（Toast/Alert/Error boundary）
+
+### 報告語言
+
+- 所有報告、PRD、Review 紀錄使用**繁體中文**撰寫
 
 ---
 
@@ -171,3 +207,5 @@ git clone --single-branch --depth 1 https://github.com/alirezarezvani/claude-ski
 6. **agent 編制和階段取捨由 AI 根據複雜度判斷，不需人工指定**
 7. **若建議 Skill 未安裝，先依照「前置工具安裝」區塊的指令安裝後再繼續**
 8. **Skill 為建議性質**：若使用的 AI Agent 不支援 SKILL.md 格式，仍須依照各階段要求完成工作，Skill 非必要條件
+9. **驗證先於宣告完成**：不能在未提出執行證據的情況下宣稱任務完成
+10. **Bug 發現時開發立即暫停**，進入除錯流程，找到 root cause 才繼續
