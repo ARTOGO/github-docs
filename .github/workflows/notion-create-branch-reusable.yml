@@ -596,7 +596,8 @@ jobs:
               and: [
                 { property: '任務狀態', status: { equals: 'FUNC REVIEW FAILED' } },
                 { property: 'GitHub Repo', select: { equals: repoName } },
-                { property: 'Card Type', select: { equals: 'Repo Execution' } }
+                { property: 'Card Type', select: { equals: 'Repo Execution' } },
+                { property: 'GitHub PR', url: { is_not_empty: true } }
               ]
             });
             console.log(`[Func Review Failed] Found ${failedData.length} tasks for ${repoName}`);
