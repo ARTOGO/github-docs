@@ -346,10 +346,278 @@ jobs:
             }
 
             // ========================================
-            // 4. Reviewer + Fixer 函式
+            // 4. Reviewer helpers
             // ========================================
+            async function getAllPRFiles() {
+              const files = [];
+              let page = 1;
+
+              while (true) {
+                const res = await fetch(`https://api.github.com/repos/${repoFullName}/pulls/${prNumber}/files?per_page=100&page=${page}`, {
+                  headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
+                });
+                if (!res.ok) {
+                  throw new Error(`Failed to get PR files list: ${res.status}`);
+                }
+
+                const pageData = await res.json();
+                files.push(...pageData);
+                if (pageData.length < 100) break;
+                page++;
+              }
+
+              return files;
+            }
+
+            function stripJsonFence(text) {
+              return (text || '').replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
+            }
+
+            function normalizeWhitespace(text) {
+              return String(text || '').replace(/\s+/g, ' ').trim();
+            }
+
+            function normalizeFilePath(filePath) {
+              return normalizeWhitespace(filePath).replace(/^\.\//, '');
+            }
+
+            function normalizeFindingDescription(text) {
+              return normalizeWhitespace(text).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, ' ');
+            }
+
+            function parsePatchHunks(patch) {
+              if (!patch) return [];
+
+              const hunks = [];
+              const lines = patch.split('\n');
+              let current = null;
+
+              for (const line of lines) {
+                const match = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@(.*)$/);
+                if (match) {
+                  if (current) {
+                    current.patch = current.lines.join('\n');
+                    delete current.lines;
+                    hunks.push(current);
+                  }
+
+                  const newStart = Number.parseInt(match[1], 10);
+                  const newCount = Number.parseInt(match[2] || '1', 10);
+                  current = {
+                    header: line,
+                    newStart,
+                    newEnd: newCount === 0 ? newStart : newStart + newCount - 1,
+                    lines: [line]
+                  };
+                  continue;
+                }
+
+                if (current) current.lines.push(line);
+              }
+
+              if (current) {
+                current.patch = current.lines.join('\n');
+                delete current.lines;
+                hunks.push(current);
+              }
+
+              return hunks;
+            }
+
+            function buildScopeMap(prFiles) {
+              const map = new Map();
+              for (const file of prFiles) {
+                const filename = normalizeFilePath(file.filename);
+                map.set(filename, {
+                  filename,
+                  status: file.status,
+                  patch: file.patch || '',
+                  hunks: parsePatchHunks(file.patch || '')
+                });
+              }
+              return map;
+            }
+
+            function isLineInScope(scopeEntry, line) {
+              if (!scopeEntry || !Number.isInteger(line) || line < 1) return false;
+              if (!scopeEntry.hunks.length) return false;
+              return scopeEntry.hunks.some(hunk => line >= hunk.newStart && line <= hunk.newEnd);
+            }
+
+            function getRelevantHunk(scopeEntry, line) {
+              if (!scopeEntry) return '';
+              const matched = scopeEntry.hunks.find(hunk => line >= hunk.newStart && line <= hunk.newEnd);
+              return matched?.patch || scopeEntry.patch || '';
+            }
+
+            function buildReviewBundle(prFiles) {
+              return prFiles
+                .filter(file => file.patch)
+                .map(file => [
+                  `File: ${file.filename}`,
+                  `Status: ${file.status}`,
+                  'Patch:',
+                  file.patch
+                ].join('\n'))
+                .join('\n\n');
+            }
+
+            function buildScopeSummary(scopeMap) {
+              return [...scopeMap.values()].map(file => {
+                const ranges = file.hunks.map(hunk => `${hunk.newStart}-${hunk.newEnd}`).join(', ');
+                return `- ${file.filename}: ${ranges || 'no visible hunk'}`;
+              }).join('\n');
+            }
+
+            function tryParseJson(text) {
+              return JSON.parse(stripJsonFence(text));
+            }
+
+            function normalizeReviewIssues(reviewerName, rawIssues, scopeMap) {
+              const accepted = [];
+              const dropped = [];
+              const allowedSeverities = new Set(['error', 'warning']);
+
+              for (const rawIssue of Array.isArray(rawIssues) ? rawIssues : []) {
+                const file = normalizeFilePath(rawIssue.file);
+                const line = Number.parseInt(rawIssue.line, 10);
+                const severity = normalizeWhitespace(rawIssue.severity).toLowerCase();
+                const description = normalizeWhitespace(rawIssue.description);
+                const suggestion = normalizeWhitespace(rawIssue.suggestion);
+                const evidence = normalizeWhitespace(rawIssue.evidence);
+                const scopeEntry = scopeMap.get(file);
+
+                let dropReason = '';
+                if (!scopeEntry) {
+                  dropReason = 'file not in PR scope';
+                } else if (!Number.isInteger(line) || line < 1) {
+                  dropReason = 'invalid line number';
+                } else if (!isLineInScope(scopeEntry, line)) {
+                  dropReason = 'line not inside changed hunks';
+                } else if (!allowedSeverities.has(severity)) {
+                  dropReason = 'severity not allowed';
+                } else if (!description || !suggestion || !evidence) {
+                  dropReason = 'missing required fields';
+                }
+
+                if (dropReason) {
+                  dropped.push({
+                    reviewer: reviewerName,
+                    file,
+                    line: Number.isInteger(line) ? line : rawIssue.line,
+                    severity,
+                    description,
+                    reason: dropReason
+                  });
+                  continue;
+                }
+
+                accepted.push({
+                  file,
+                  line,
+                  severity,
+                  description,
+                  suggestion,
+                  evidence
+                });
+              }
+
+              return { accepted, dropped };
+            }
+
+            function enrichFindings(reviewerName, issues, scopeMap) {
+              return issues.map((issue, index) => ({
+                id: `${reviewerName.toLowerCase()}-${index + 1}`,
+                reviewer: reviewerName,
+                file: issue.file,
+                line: issue.line,
+                severity: issue.severity,
+                description: issue.description,
+                suggestion: issue.suggestion,
+                evidence: issue.evidence,
+                localPatch: getRelevantHunk(scopeMap.get(issue.file), issue.line)
+              }));
+            }
+
+            function makeFindingKey(finding) {
+              return [
+                normalizeFilePath(finding.file),
+                Number.parseInt(finding.line, 10),
+                normalizeWhitespace(finding.severity).toLowerCase(),
+                normalizeFindingDescription(finding.description)
+              ].join('|');
+            }
+
+            function dedupeDecisionFindings(findings) {
+              const merged = new Map();
+
+              for (const finding of findings) {
+                const key = makeFindingKey(finding);
+                if (!merged.has(key)) {
+                  merged.set(key, {
+                    ...finding,
+                    reviewers: [finding.reviewer],
+                    reasons: finding.reason ? [finding.reason] : []
+                  });
+                  continue;
+                }
+
+                const current = merged.get(key);
+                if (!current.reviewers.includes(finding.reviewer)) current.reviewers.push(finding.reviewer);
+                if (finding.reason && !current.reasons.includes(finding.reason)) current.reasons.push(finding.reason);
+              }
+
+              return [...merged.values()];
+            }
+
+            function buildReviewResult(reviewerName, rawResult, scopeMap) {
+              const { accepted, dropped } = normalizeReviewIssues(reviewerName, rawResult?.issues, scopeMap);
+              const summary = normalizeWhitespace(rawResult?.summary) || `${reviewerName} did not provide a summary`;
+              return {
+                reviewer: reviewerName,
+                passed: accepted.length === 0,
+                issues: accepted,
+                droppedIssues: dropped,
+                summary,
+                error: !!rawResult?.error
+              };
+            }
+
+            function formatFindingsForPrompt(findings) {
+              return JSON.stringify(findings.map(finding => ({
+                finding_id: finding.id,
+                file: finding.file,
+                line: finding.line,
+                severity: finding.severity,
+                description: finding.description,
+                suggestion: finding.suggestion,
+                evidence: finding.evidence,
+                local_patch: finding.localPatch
+              })), null, 2);
+            }
+
+            function indexCritiqueEvaluations(rawEvaluations) {
+              const evaluations = new Map();
+              for (const evaluation of Array.isArray(rawEvaluations) ? rawEvaluations : []) {
+                const findingId = normalizeWhitespace(evaluation.finding_id);
+                const verdict = normalizeWhitespace(evaluation.verdict).toLowerCase();
+                const reason = normalizeWhitespace(evaluation.reason);
+                if (!findingId) continue;
+                if (!['accept', 'reject', 'uncertain'].includes(verdict)) continue;
+                evaluations.set(findingId, { verdict, reason });
+              }
+              return evaluations;
+            }
+
             const reviewerPrompt = [
-              '你是一位資深 Code Reviewer。請審查以下 PR diff。',
+              '你是一位資深 Code Reviewer。請只審查這次 PR patch bundle 中顯示的 changed hunks。',
+              '',
+              '硬性範圍限制：',
+              '- 只能審查 patch bundle 中出現的檔案。',
+              '- 只能回報由 changed hunk 直接引入的問題。',
+              '- 不要評論未修改的檔案、整體架構、重構建議、或與這次改動無關的技術債。',
+              '- 若問題需要依賴未修改程式碼才能成立，只有在 changed hunk 直接觸發該問題時才能回報，且 line 必須錨定在 changed hunk 內。',
+              '- 若無法指出 patch 內的證據，就不要回報。',
               '',
               '請用以下 JSON 格式回應（不要加 markdown code fence）：',
               '{',
@@ -358,9 +626,10 @@ jobs:
               '    {',
               '      "file": "path/to/file",',
               '      "line": 42,',
-              '      "severity": "error|warning|info",',
+              '      "severity": "error|warning",',
               '      "description": "問題描述",',
-              '      "suggestion": "建議修改方式"',
+              '      "suggestion": "最小必要修正建議",',
+              '      "evidence": "直接引用 patch 中能證明問題的短片段"',
               '    }',
               '  ],',
               '  "summary": "整體評估摘要"',
@@ -368,402 +637,323 @@ jobs:
               '',
               '審查重點：',
               '- 邏輯錯誤與 bug',
-              '- 安全性問題（OWASP Top 10）',
-              '- 效能問題',
-              '- 程式碼風格與可維護性',
-              '- 錯誤處理是否完善',
+              '- 安全性問題',
+              '- 效能退化',
+              '- 直接由本次改動造成的錯誤處理缺口',
               '',
-              '只回報 error 和 warning 等級的問題。info 等級只在有重要建議時才加。',
-              '若沒有問題，passed 設為 true，issues 設為空陣列。'
+              '如果沒有 in-scope 問題，passed 設為 true，issues 設為空陣列。'
             ].join('\n');
 
-            async function claudeReview(diffText, round) {
+            const critiquePrompt = [
+              '你是一位 reviewer 的 reviewer。你的工作是審核另一位 reviewer 提出的 findings 是否成立。',
+              '',
+              '硬性規則：',
+              '- 只能評估提供給你的 findings，不要新增新的 finding。',
+              '- 只能根據該 finding 對應的 local patch 判斷，不要延伸到整個 codebase。',
+              '- accept：finding 明確成立且在本次 changed hunk 範圍內。',
+              '- reject：finding 不成立、證據不足、或超出本次 changed hunk 範圍。',
+              '- uncertain：單靠 patch 無法確認。',
+              '',
+              '請用以下 JSON 格式回應（不要加 markdown code fence）：',
+              '{',
+              '  "evaluations": [',
+              '    {',
+              '      "finding_id": "claude-1",',
+              '      "verdict": "accept|reject|uncertain",',
+              '      "reason": "一句話說明判斷原因"',
+              '    }',
+              '  ],',
+              '  "summary": "整體評估摘要"',
+              '}'
+            ].join('\n');
+
+            async function claudeJson(systemPrompt, userContent, maxTokens = 8192) {
+              const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                  'x-api-key': anthropicKey,
+                  'anthropic-version': '2023-06-01',
+                  'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                  model: 'claude-sonnet-4-20250514',
+                  max_tokens: maxTokens,
+                  system: systemPrompt,
+                  messages: [{ role: 'user', content: userContent }]
+                })
+              });
+
+              if (!res.ok) {
+                throw new Error(`Claude API error: ${res.status}`);
+              }
+
+              const data = await res.json();
+              if (data.stop_reason === 'max_tokens') {
+                throw new Error('Claude output truncated');
+              }
+              return tryParseJson(data.content?.[0]?.text || '');
+            }
+
+            async function codexJson(systemPrompt, userContent, maxTokens = 8192) {
+              const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${openaiKey}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  model: 'gpt-5.4',
+                  max_tokens: maxTokens,
+                  messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userContent }
+                  ],
+                  response_format: { type: 'json_object' }
+                })
+              });
+
+              if (!res.ok) {
+                throw new Error(`OpenAI API error: ${res.status}`);
+              }
+
+              const data = await res.json();
+              if (data.choices?.[0]?.finish_reason === 'length') {
+                throw new Error('Codex output truncated');
+              }
+              return tryParseJson(data.choices?.[0]?.message?.content || '');
+            }
+
+            async function runReviewer(reviewerName, requestFn, reviewInput, scopeMap) {
               try {
-                const res = await fetch('https://api.anthropic.com/v1/messages', {
-                  method: 'POST',
-                  headers: {
-                    'x-api-key': anthropicKey,
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 8192,
-                    system: reviewerPrompt,
-                    messages: [{ role: 'user', content: `Round ${round} review.\n\nPR diff:\n${diffText}` }]
-                  })
-                });
-                if (!res.ok) {
-                  console.error(`Claude Reviewer API error: ${res.status}`);
-                  return { passed: true, issues: [], summary: 'Claude API error — skipped', error: true };
-                }
-                const data = await res.json();
-                // 檢查是否因 max_tokens 被截斷
-                if (data.stop_reason === 'max_tokens') {
-                  console.warn('Claude Reviewer output truncated (max_tokens)');
-                  return { passed: false, issues: [], summary: 'Claude output truncated — treating as fail', error: true };
-                }
-                const text = data.content?.[0]?.text || '';
-                // 嘗試 parse JSON（移除可能的 markdown code fence）
-                const jsonStr = text.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
-                const result = JSON.parse(jsonStr);
-                return result;
+                const rawResult = await requestFn(reviewerPrompt, reviewInput);
+                return buildReviewResult(reviewerName, rawResult, scopeMap);
               } catch (e) {
-                console.error(`Claude Reviewer failed: ${e.message}`);
-                return { passed: true, issues: [], summary: `Claude error: ${e.message}`, error: true };
+                console.error(`${reviewerName} Reviewer failed: ${e.message}`);
+                return {
+                  reviewer: reviewerName,
+                  passed: true,
+                  issues: [],
+                  droppedIssues: [],
+                  summary: `${reviewerName} error: ${e.message}`,
+                  error: true
+                };
               }
             }
 
-            async function openaiReview(diffText, round) {
-              try {
-                const res = await fetch('https://api.openai.com/v1/chat/completions', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${openaiKey}`,
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    model: 'gpt-4o',
-                    max_tokens: 8192,
-                    messages: [
-                      { role: 'system', content: reviewerPrompt },
-                      { role: 'user', content: `Round ${round} review.\n\nPR diff:\n${diffText}` }
-                    ],
-                    response_format: { type: 'json_object' }
-                  })
-                });
-                if (!res.ok) {
-                  console.error(`OpenAI Reviewer API error: ${res.status}`);
-                  return { passed: true, issues: [], summary: 'OpenAI API error — skipped', error: true };
-                }
-                const data = await res.json();
-                // 檢查是否因 max_tokens 被截斷
-                if (data.choices?.[0]?.finish_reason === 'length') {
-                  console.warn('OpenAI Reviewer output truncated (max_tokens)');
-                  return { passed: false, issues: [], summary: 'OpenAI output truncated — treating as fail', error: true };
-                }
-                const text = data.choices?.[0]?.message?.content || '';
-                const result = JSON.parse(text);
-                return result;
-              } catch (e) {
-                console.error(`OpenAI Reviewer failed: ${e.message}`);
-                return { passed: true, issues: [], summary: `OpenAI error: ${e.message}`, error: true };
-              }
-            }
-
-            function mergeIssues(claudeIssues, openaiIssues) {
-              // 簡單合併 + 去重（以 file+line+severity 為 key）
-              const seen = new Set();
-              const merged = [];
-              for (const issue of [...claudeIssues, ...openaiIssues]) {
-                const key = `${issue.file}:${issue.line}:${issue.severity}`;
-                if (!seen.has(key)) {
-                  seen.add(key);
-                  merged.push(issue);
-                }
-              }
-              return merged;
-            }
-
-            async function fixerFix(issues, round) {
-              const issueList = issues.map((issue, i) =>
-                `${i + 1}. [${issue.severity}] ${issue.file}:${issue.line}\n   問題：${issue.description}\n   建議：${issue.suggestion}`
-              ).join('\n\n');
-
-              const fixerPrompt = [
-                '你是一位資深開發者。以下是兩位 Reviewer 發現的問題，請修正程式碼。',
-                '',
-                '規則：',
-                '- 只修改 Reviewer 指出的問題',
-                '- 不要做額外的重構或美化',
-                '- 每個修改都要有明確對應的 issue',
-                '- 回傳修改後的檔案內容',
-                '',
-                '請用以下 JSON 格式回應（不要加 markdown code fence）：',
-                '{',
-                '  "fixes": [',
-                '    {',
-                '      "file": "path/to/file",',
-                '      "content": "完整的修改後檔案內容"',
-                '    }',
-                '  ],',
-                '  "summary": "修改摘要"',
-                '}',
-                '',
-                '只修改需要修改的檔案。content 必須是完整的檔案內容（不是 diff）。'
-              ].join('\n');
-
-              // 讀取需要修改的檔案的當前內容
-              const filesToRead = [...new Set(issues.map(i => i.file))];
-              const fileContents = {};
-              for (const filePath of filesToRead) {
-                try {
-                  const fileRes = await fetch(`https://api.github.com/repos/${repoFullName}/contents/${filePath}?ref=${headBranch}`, {
-                    headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
-                  });
-                  if (fileRes.ok) {
-                    const fileData = await fileRes.json();
-                    fileContents[filePath] = Buffer.from(fileData.content, 'base64').toString('utf-8');
-                  }
-                } catch (e) {
-                  console.warn(`Could not read file ${filePath}: ${e.message}`);
-                }
-              }
-
-              const currentFiles = Object.entries(fileContents)
-                .map(([path, content]) => `=== ${path} ===\n${content}`)
-                .join('\n\n');
-
-              // Fixer 輸入大小防護：超過 100KB 的檔案內容可能導致截斷
-              const fixerInputSize = issueList.length + currentFiles.length;
-              if (fixerInputSize > 100 * 1024) {
-                console.warn(`Fixer input too large (${Math.round(fixerInputSize / 1024)}KB), skipping auto-fix`);
-                return null;
+            async function runCritique(reviewerName, requestFn, targetFindings) {
+              if (!targetFindings.length) {
+                return { reviewer: reviewerName, evaluations: new Map(), summary: 'No findings to critique', error: false };
               }
 
               try {
-                const res = await fetch('https://api.anthropic.com/v1/messages', {
-                  method: 'POST',
-                  headers: {
-                    'x-api-key': anthropicKey,
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 32768,
-                    system: fixerPrompt,
-                    messages: [{ role: 'user', content: `問題清單：\n${issueList}\n\n目前檔案內容：\n${currentFiles}` }]
-                  })
-                });
-
-                if (!res.ok) {
-                  console.error(`Fixer API error: ${res.status}`);
-                  return null;
-                }
-
-                const data = await res.json();
-                // 檢查是否因 max_tokens 被截斷
-                if (data.stop_reason === 'max_tokens') {
-                  console.warn('Fixer output truncated (max_tokens) — treating as failure');
-                  return null;
-                }
-                const text = data.content?.[0]?.text || '';
-                const jsonStr = text.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
-                const result = JSON.parse(jsonStr);
-
-                // Push fixes as a commit
-                if (result.fixes && result.fixes.length > 0) {
-                  // 取得最新 commit SHA
-                  const refRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/ref/heads/${headBranch}`, {
-                    headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
-                  });
-                  if (!refRes.ok) {
-                    console.error(`Failed to get branch ref: ${refRes.status}`);
-                    return null;
-                  }
-                  const refData = await refRes.json();
-                  const latestSha = refData.object.sha;
-
-                  // 取得 base tree
-                  const commitRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/commits/${latestSha}`, {
-                    headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
-                  });
-                  const commitData = await commitRes.json();
-                  const baseTreeSha = commitData.tree.sha;
-
-                  // 建立 blobs + tree
-                  const treeItems = [];
-                  for (const fix of result.fixes) {
-                    // 安全檢查：只允許修改 PR 中已存在的檔案
-                    const allowedFiles = prChangedFiles.size > 0 ? prChangedFiles : new Set(Object.keys(fileContents));
-                    if (!allowedFiles.has(fix.file)) {
-                      console.warn(`Fixer tried to modify non-PR file: ${fix.file}, skipping`);
-                      continue;
-                    }
-
-                    // 截斷偵測：如果修復後內容小於原檔 50%，可能是 AI 截斷輸出
-                    const originalContent = fileContents[fix.file];
-                    if (originalContent && fix.content.length < originalContent.length * 0.5) {
-                      console.warn(`Fixer output for ${fix.file} is suspiciously small (${fix.content.length} vs original ${originalContent.length}), skipping`);
-                      continue;
-                    }
-                    const blobRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/blobs`, {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ content: fix.content, encoding: 'utf-8' })
-                    });
-                    if (!blobRes.ok) continue;
-                    const blobData = await blobRes.json();
-                    treeItems.push({ path: fix.file, mode: '100644', type: 'blob', sha: blobData.sha });
-                  }
-
-                  if (treeItems.length === 0) {
-                    console.log('No valid fixes to commit');
-                    return result.summary;
-                  }
-
-                  const newTreeRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/trees`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems })
-                  });
-                  const newTreeData = await newTreeRes.json();
-
-                  // 建立 commit
-                  const newCommitRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/commits`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      message: `fix: AI auto-fix round ${round} - ${result.summary}\n\n[skip-ai-review]`,
-                      tree: newTreeData.sha,
-                      parents: [latestSha]
-                    })
-                  });
-                  const newCommitData = await newCommitRes.json();
-
-                  // 更新 branch ref（force: false 防止覆蓋中間 push 的 commit）
-                  const refUpdateRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/refs/heads/${headBranch}`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${botToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sha: newCommitData.sha, force: false })
-                  });
-                  if (!refUpdateRes.ok) {
-                    const refErr = await refUpdateRes.json();
-                    console.error(`Ref update failed (race condition?): ${refUpdateRes.status}`, refErr);
-                    return null;
-                  }
-
-                  console.log(`Fixer committed: ${newCommitData.sha}`);
-                }
-
-                return result.summary;
+                const rawResult = await requestFn(
+                  critiquePrompt,
+                  `待審核 findings：\n${formatFindingsForPrompt(targetFindings)}`
+                );
+                return {
+                  reviewer: reviewerName,
+                  evaluations: indexCritiqueEvaluations(rawResult?.evaluations),
+                  summary: normalizeWhitespace(rawResult?.summary) || `${reviewerName} critique completed`,
+                  error: false
+                };
               } catch (e) {
-                console.error(`Fixer failed: ${e.message}`);
-                return null;
+                console.error(`${reviewerName} Critique failed: ${e.message}`);
+                return {
+                  reviewer: reviewerName,
+                  evaluations: new Map(),
+                  summary: `${reviewerName} critique error: ${e.message}`,
+                  error: true
+                };
               }
             }
 
-            // ========================================
-            // 5. Review-Fix Loop（最多 3 輪）
-            // 取得 PR 變更檔案清單（用於 Fixer allow-list）
-            const prFilesRes = await fetch(`https://api.github.com/repos/${repoFullName}/pulls/${prNumber}/files?per_page=300`, {
-              headers: { 'Authorization': `Bearer ${botToken}`, 'Accept': 'application/vnd.github.v3+json' }
-            });
-            const prChangedFiles = new Set();
-            if (prFilesRes.ok) {
-              const prFilesData = await prFilesRes.json();
-              for (const f of prFilesData) prChangedFiles.add(f.filename);
-              console.log(`PR changed files: ${prChangedFiles.size}`);
-            } else {
-              console.warn(`Failed to get PR files list: ${prFilesRes.status}, fixer will use issue-file fallback`);
+            function formatFindingMarkdown(finding, includeReason = false) {
+              const lines = [
+                `- \`[${finding.severity}]\` **${finding.file}:${finding.line}** — ${finding.description}`,
+                `  證據：${finding.evidence}`,
+                `  建議：${finding.suggestion}`
+              ];
+              if (finding.reviewers?.length > 0) {
+                lines.push(`  來源：${finding.reviewers.join(', ')}`);
+              }
+              if (includeReason && finding.reasons?.length > 0) {
+                lines.push(`  判定：${finding.reasons.join(' | ')}`);
+              }
+              return lines.join('\n');
             }
 
-            // ========================================
-            let round = 0;
-            let hasFixes = false;
-            let passed = false;
-            const roundResults = [];
+            const prFilesData = await getAllPRFiles();
+            const reviewableFiles = prFilesData.filter(file => typeof file.patch === 'string' && file.patch.trim().length > 0);
+            const filesWithoutVisiblePatch = prFilesData
+              .filter(file => !file.patch || !file.patch.trim())
+              .map(file => file.filename);
 
-            while (round < 3 && !passed) {
-              round++;
-              console.log(`\n=== Round ${round} ===`);
+            if (reviewableFiles.length === 0) {
+              console.log('No reviewable text patches in PR, skipping AI review');
+              await github.rest.issues.createComment({
+                owner: repoOwner, repo: repoName, issue_number: prNumber,
+                body: '⚠️ 此 PR 沒有可供 AI 審查的文字 patch（可能只有 binary / generated changes），請進行人工 Code Review'
+              });
 
-              // 兩個 Reviewer 並行
-              const [claudeResult, openaiResult] = await Promise.all([
-                claudeReview(diff, round),
-                openaiReview(diff, round)
-              ]);
-
-              console.log(`Claude: passed=${claudeResult.passed}, issues=${claudeResult.issues?.length || 0}, error=${!!claudeResult.error}`);
-              console.log(`OpenAI: passed=${openaiResult.passed}, issues=${openaiResult.issues?.length || 0}, error=${!!openaiResult.error}`);
-
-              const roundInfo = { round, claude: claudeResult, openai: openaiResult, fixSummary: null };
-
-              // 兩個 Reviewer 都失敗 → 視為 review failure（不是 pass）
-              if (claudeResult.error && openaiResult.error) {
-                console.error('Both reviewers errored — treating as review failure');
-                roundResults.push(roundInfo);
-                break;  // 跳出迴圈，走 Failed 路徑
+              if (taskType === 'sprint') {
+                await safeUpdateStatus(cardPageId, 'TECH REVIEW');
               }
 
-              // 兩個都 pass 才算通過（error=true 的 reviewer 算 pass 是容錯，但上面已排除雙 error）
-              if (claudeResult.passed && openaiResult.passed) {
-                passed = true;
-                roundResults.push(roundInfo);
-                break;
-              }
-
-              // 合併問題 → Fixer
-              const allIssues = mergeIssues(claudeResult.issues || [], openaiResult.issues || []);
-              console.log(`Merged issues: ${allIssues.length}`);
-
-              if (allIssues.length > 0) {
-                const fixSummary = await fixerFix(allIssues, round);
-                roundInfo.fixSummary = fixSummary;
-                if (fixSummary) {
-                  hasFixes = true;
-                  // 等待 GitHub 處理 commit，然後取得最新 diff
-                  await new Promise(r => setTimeout(r, 3000));
-                  diff = await getPRDiff();
-                  if (!diff) {
-                    console.error('Failed to get updated diff after fix');
-                    roundResults.push(roundInfo);
-                    break;
-                  }
+              const techReviewers = card._techReviewers || [];
+              if (techReviewers.length > 0) {
+                const richText = [];
+                for (let i = 0; i < techReviewers.length; i++) {
+                  richText.push({ type: 'mention', mention: { type: 'user', user: { id: techReviewers[i].id } } });
+                  if (i < techReviewers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
                 }
+                richText.push({ type: 'text', text: { content: ` 此 PR 沒有可供 AI 審查的文字 patch，請直接進行人工 Code Review\n${prUrl}` } });
+                await addNotionComment(cardPageId, richText);
               }
-
-              roundResults.push(roundInfo);
+              return;
             }
 
-            console.log(`\nResult: passed=${passed}, hasFixes=${hasFixes}, rounds=${round}`);
+            const scopeMap = buildScopeMap(reviewableFiles);
+            const reviewInput = [
+              '允許審查的檔案與 hunk 範圍：',
+              buildScopeSummary(scopeMap),
+              '',
+              'Patch bundle：',
+              buildReviewBundle(reviewableFiles)
+            ].join('\n');
+
+            const [claudeRawReview, codexRawReview] = await Promise.all([
+              runReviewer('Claude', claudeJson, reviewInput, scopeMap),
+              runReviewer('Codex', codexJson, reviewInput, scopeMap)
+            ]);
+
+            console.log(`Claude: passed=${claudeRawReview.passed}, issues=${claudeRawReview.issues.length}, error=${claudeRawReview.error}`);
+            console.log(`Codex: passed=${codexRawReview.passed}, issues=${codexRawReview.issues.length}, error=${codexRawReview.error}`);
+
+            if (claudeRawReview.error && codexRawReview.error) {
+              throw new Error('Both reviewers failed');
+            }
+
+            const claudeFindings = enrichFindings('Claude', claudeRawReview.issues, scopeMap);
+            const codexFindings = enrichFindings('Codex', codexRawReview.issues, scopeMap);
+
+            const [claudeCritique, codexCritique] = await Promise.all([
+              runCritique('Claude', claudeJson, codexFindings),
+              runCritique('Codex', codexJson, claudeFindings)
+            ]);
+
+            const agreedFindings = [];
+            const disputedFindings = [];
+            const rejectedFindings = [];
+
+            for (const finding of claudeFindings) {
+              const evaluation = codexCritique.evaluations.get(finding.id);
+              if (!evaluation || evaluation.verdict === 'uncertain') {
+                disputedFindings.push({ ...finding, reason: evaluation?.reason || 'Codex 無法單靠 patch 確認' });
+              } else if (evaluation.verdict === 'accept') {
+                agreedFindings.push({ ...finding, reason: evaluation.reason || 'Codex 接受此 finding' });
+              } else {
+                rejectedFindings.push({ ...finding, reason: evaluation.reason || 'Codex 拒絕此 finding' });
+              }
+            }
+
+            for (const finding of codexFindings) {
+              const evaluation = claudeCritique.evaluations.get(finding.id);
+              if (!evaluation || evaluation.verdict === 'uncertain') {
+                disputedFindings.push({ ...finding, reason: evaluation?.reason || 'Claude 無法單靠 patch 確認' });
+              } else if (evaluation.verdict === 'accept') {
+                agreedFindings.push({ ...finding, reason: evaluation.reason || 'Claude 接受此 finding' });
+              } else {
+                rejectedFindings.push({ ...finding, reason: evaluation.reason || 'Claude 拒絕此 finding' });
+              }
+            }
+
+            const finalAgreedFindings = dedupeDecisionFindings(agreedFindings);
+            const finalDisputedFindings = dedupeDecisionFindings(disputedFindings);
+            const finalRejectedFindings = dedupeDecisionFindings(rejectedFindings);
+
+            let finalOutcome = 'pass';
+            if (finalAgreedFindings.length > 0) {
+              finalOutcome = 'agreed_issues';
+            } else if (finalDisputedFindings.length > 0) {
+              finalOutcome = 'disputed_only';
+            }
+
+            const passed = finalOutcome === 'pass';
+            console.log(`\nResult: outcome=${finalOutcome}, agreed=${finalAgreedFindings.length}, disputed=${finalDisputedFindings.length}`);
 
             // ========================================
-            // 6. 留 PR comment（每輪結果摘要）
+            // 5. 留 PR comment（雙 reviewer + 單輪交叉審視）
             // ========================================
             let prComment = `## 🤖 AI Code Review Results\n\n`;
             prComment += `| | 結果 |\n|---|---|\n`;
             prComment += `| Review Mode | ${reviewMode} |\n`;
-            prComment += `| Rounds | ${round} |\n`;
-            prComment += `| Final | ${passed ? '✅ Passed' : '❌ Failed'} |\n`;
-            prComment += `| Auto-fixed | ${hasFixes ? 'Yes' : 'No'} |\n\n`;
+            prComment += `| Claude Findings | ${claudeFindings.length} |\n`;
+            prComment += `| Codex Findings | ${codexFindings.length} |\n`;
+            prComment += `| Agreed Findings | ${finalAgreedFindings.length} |\n`;
+            prComment += `| Disputed Findings | ${finalDisputedFindings.length} |\n`;
+            prComment += `| Rejected Findings | ${finalRejectedFindings.length} |\n`;
+            prComment += `| Final | ${
+              finalOutcome === 'pass'
+                ? '✅ Passed'
+                : finalOutcome === 'agreed_issues'
+                  ? '❌ Changes Requested'
+                  : '⚠️ Human Adjudication Needed'
+            } |\n\n`;
 
-            for (const r of roundResults) {
-              prComment += `### Round ${r.round}\n\n`;
-              prComment += `**Claude Reviewer**: ${r.claude.passed ? '✅ Pass' : '❌ Fail'} — ${r.claude.summary || 'N/A'}\n`;
-              if (r.claude.issues?.length > 0) {
-                prComment += `<details><summary>Issues (${r.claude.issues.length})</summary>\n\n`;
-                for (const issue of r.claude.issues) {
-                  prComment += `- \`[${issue.severity}]\` **${issue.file}:${issue.line}** — ${issue.description}\n`;
-                }
-                prComment += `\n</details>\n\n`;
-              }
-
-              prComment += `**OpenAI Reviewer**: ${r.openai.passed ? '✅ Pass' : '❌ Fail'} — ${r.openai.summary || 'N/A'}\n`;
-              if (r.openai.issues?.length > 0) {
-                prComment += `<details><summary>Issues (${r.openai.issues.length})</summary>\n\n`;
-                for (const issue of r.openai.issues) {
-                  prComment += `- \`[${issue.severity}]\` **${issue.file}:${issue.line}** — ${issue.description}\n`;
-                }
-                prComment += `\n</details>\n\n`;
-              }
-
-              if (r.fixSummary) {
-                prComment += `**Fixer**: ${r.fixSummary}\n\n`;
-              }
+            if (filesWithoutVisiblePatch.length > 0) {
+              prComment += `> 以下檔案沒有可見 patch，因此未納入 AI review scope：${filesWithoutVisiblePatch.map(file => `\`${file}\``).join(', ')}\n\n`;
             }
 
-            // 未解決問題（最後一輪的 issues）
-            if (!passed && roundResults.length > 0) {
-              const lastRound = roundResults[roundResults.length - 1];
-              const remaining = mergeIssues(lastRound.claude.issues || [], lastRound.openai.issues || []);
-              if (remaining.length > 0) {
-                prComment += `### ⚠️ 未解決問題\n\n`;
-                for (const issue of remaining) {
-                  prComment += `- \`[${issue.severity}]\` **${issue.file}:${issue.line}** — ${issue.description}\n  建議：${issue.suggestion}\n`;
-                }
+            prComment += `### Claude Reviewer\n\n${claudeRawReview.summary}\n\n`;
+            if (claudeFindings.length > 0) {
+              prComment += `<details><summary>Findings (${claudeFindings.length})</summary>\n\n`;
+              for (const finding of claudeFindings) {
+                prComment += `${formatFindingMarkdown({ ...finding, reviewers: ['Claude'] })}\n`;
               }
+              prComment += `\n</details>\n\n`;
+            }
+            if (claudeRawReview.droppedIssues.length > 0) {
+              prComment += `<details><summary>Dropped as out-of-scope (${claudeRawReview.droppedIssues.length})</summary>\n\n`;
+              for (const issue of claudeRawReview.droppedIssues) {
+                prComment += `- **${issue.file || 'unknown'}:${issue.line || '?'}** — ${issue.reason}\n`;
+              }
+              prComment += `\n</details>\n\n`;
+            }
+
+            prComment += `### Codex Reviewer\n\n${codexRawReview.summary}\n\n`;
+            if (codexFindings.length > 0) {
+              prComment += `<details><summary>Findings (${codexFindings.length})</summary>\n\n`;
+              for (const finding of codexFindings) {
+                prComment += `${formatFindingMarkdown({ ...finding, reviewers: ['Codex'] })}\n`;
+              }
+              prComment += `\n</details>\n\n`;
+            }
+            if (codexRawReview.droppedIssues.length > 0) {
+              prComment += `<details><summary>Dropped as out-of-scope (${codexRawReview.droppedIssues.length})</summary>\n\n`;
+              for (const issue of codexRawReview.droppedIssues) {
+                prComment += `- **${issue.file || 'unknown'}:${issue.line || '?'}** — ${issue.reason}\n`;
+              }
+              prComment += `\n</details>\n\n`;
+            }
+
+            prComment += `### Cross-review\n\n`;
+            prComment += `- Claude on Codex: ${claudeCritique.summary}\n`;
+            prComment += `- Codex on Claude: ${codexCritique.summary}\n\n`;
+
+            if (finalAgreedFindings.length > 0) {
+              prComment += `### ✅ Agreed Findings\n\n`;
+              for (const finding of finalAgreedFindings) {
+                prComment += `${formatFindingMarkdown(finding, true)}\n`;
+              }
+              prComment += `\n`;
+            }
+
+            if (finalDisputedFindings.length > 0) {
+              prComment += `### ⚠️ Disputed Findings\n\n`;
+              for (const finding of finalDisputedFindings) {
+                prComment += `${formatFindingMarkdown(finding, true)}\n`;
+              }
+              prComment += `\n`;
             }
 
             await github.rest.issues.createComment({
@@ -772,12 +962,10 @@ jobs:
             });
 
             // ========================================
-            // 7. 根據結果 + Review Mode 決定後續
+            // 6. 根據結果 + Review Mode 決定後續
             // ========================================
-            if (passed && !hasFixes) {
-              // Clean Pass — 第一輪通過，沒改東西
+            if (passed) {
               if (reviewMode === 'AI Only') {
-                // 自動 squash merge
                 try {
                   await github.rest.pulls.merge({
                     owner: repoOwner, repo: repoName, pull_number: prNumber,
@@ -786,7 +974,6 @@ jobs:
                   console.log('Auto-merged PR (AI Only, Clean Pass)');
                 } catch (e) {
                   console.error(`Auto-merge failed: ${e.message}`);
-                  // Fallback：通知 Developer 手動 merge
                   const devUsers = card._developers || [];
                   if (devUsers.length > 0) {
                     const richText = [];
@@ -799,7 +986,6 @@ jobs:
                   }
                 }
               } else {
-                // Human Review → TECH REVIEW + 通知 Tech Reviewer
                 if (taskType === 'sprint') {
                   await safeUpdateStatus(cardPageId, 'TECH REVIEW');
                 }
@@ -811,54 +997,26 @@ jobs:
                     richText.push({ type: 'mention', mention: { type: 'user', user: { id: techReviewers[i].id } } });
                     if (i < techReviewers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
                   }
-                  richText.push({ type: 'text', text: { content: ` AI Review 已通過，請進行 Code Review\n${prUrl}` } });
+                  richText.push({ type: 'text', text: { content: ` AI Review clean pass，請進行人工 Code Review\n${prUrl}` } });
                   await addNotionComment(cardPageId, richText);
                 }
               }
-
-            } else if (passed && hasFixes) {
-              // Fixed Pass — 有修改後通過
-              if (reviewMode === 'AI Only') {
-                // 自動 squash merge
-                try {
-                  await github.rest.pulls.merge({
-                    owner: repoOwner, repo: repoName, pull_number: prNumber,
-                    merge_method: 'squash'
-                  });
-                  console.log('Auto-merged PR (AI Only, Fixed Pass)');
-                } catch (e) {
-                  console.error(`Auto-merge failed: ${e.message}`);
-                  const devUsers = card._developers || [];
-                  if (devUsers.length > 0) {
-                    const richText = [];
-                    for (let i = 0; i < devUsers.length; i++) {
-                      richText.push({ type: 'mention', mention: { type: 'user', user: { id: devUsers[i].id } } });
-                      if (i < devUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
-                    }
-                    richText.push({ type: 'text', text: { content: ` AI Review 已通過並修正了部分程式碼，但自動 merge 失敗，請手動 merge PR\n${prUrl}` } });
-                    await addNotionComment(cardPageId, richText);
-                  }
-                }
-              } else {
-                // Human Review → DEV IN PROGRESS + 通知 Developer
-                if (taskType === 'sprint') {
-                  await safeUpdateStatus(cardPageId, 'DEV IN PROGRESS');
-                }
-
-                const devUsers = card._developers || [];
-                if (devUsers.length > 0) {
-                  const richText = [];
-                  for (let i = 0; i < devUsers.length; i++) {
-                    richText.push({ type: 'mention', mention: { type: 'user', user: { id: devUsers[i].id } } });
-                    if (i < devUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
-                  }
-                  richText.push({ type: 'text', text: { content: ` AI Review 已通過並自動修正了部分程式碼，請確認 AI 修改內容，若沒問題則點選 Re-request review 按鈕通知 Tech Reviewer\n${prUrl}` } });
-                  await addNotionComment(cardPageId, richText);
-                }
+            } else if (finalOutcome === 'disputed_only' && reviewMode !== 'AI Only') {
+              if (taskType === 'sprint') {
+                await safeUpdateStatus(cardPageId, 'TECH REVIEW');
               }
 
+              const techReviewers = card._techReviewers || [];
+              if (techReviewers.length > 0) {
+                const richText = [];
+                for (let i = 0; i < techReviewers.length; i++) {
+                  richText.push({ type: 'mention', mention: { type: 'user', user: { id: techReviewers[i].id } } });
+                  if (i < techReviewers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+                }
+                richText.push({ type: 'text', text: { content: ` AI reviewers 對 ${finalDisputedFindings.length} 個問題未達成共識，請人工判定\n${prUrl}` } });
+                await addNotionComment(cardPageId, richText);
+              }
             } else {
-              // Failed — 3 輪都失敗
               if (taskType === 'sprint') {
                 await safeUpdateStatus(cardPageId, 'DEV IN PROGRESS');
               }
@@ -870,7 +1028,12 @@ jobs:
                   richText.push({ type: 'mention', mention: { type: 'user', user: { id: devUsers[i].id } } });
                   if (i < devUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
                 }
-                richText.push({ type: 'text', text: { content: ` AI Review 未能完全修復所有問題，請確認 AI 修改內容與未解決的問題，修正後點選 Re-request review 按鈕通知 Tech Reviewer\n${prUrl}` } });
+
+                const message =
+                  finalOutcome === 'agreed_issues'
+                    ? ` AI Review 發現 ${finalAgreedFindings.length} 個共識問題${finalDisputedFindings.length > 0 ? `，另有 ${finalDisputedFindings.length} 個待人工判定問題` : ''}，請修正後再 Re-request review\n${prUrl}`
+                    : ` AI reviewers 對 ${finalDisputedFindings.length} 個問題未達成共識，且目前為 AI Only 流程，請人工檢查後再決定是否繼續\n${prUrl}`;
+                richText.push({ type: 'text', text: { content: message } });
                 await addNotionComment(cardPageId, richText);
               }
             }

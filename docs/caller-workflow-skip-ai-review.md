@@ -1,54 +1,61 @@
-# Caller Workflow：`[skip-ai-review]` 防護指引
+# Caller Workflow：AI Review 呼叫指引
 
-## 背景
+## 現況
 
-AI Code Review 的 Fixer 在自動修復程式碼後，會在 commit message 中加入 `[skip-ai-review]` 標記。
-當此 commit push 到 PR 時，會觸發 `pull_request.synchronize` 事件，可能導致無限迴圈。
+AI review reusable workflow 現在只做 review，不再自動修改程式碼、push commit、或依賴 `[skip-ai-review]` 防無限迴圈。
 
-## 問題
+這代表 caller workflow 不需要再檢查最新 commit message 是否包含 `[skip-ai-review]`。
 
-`github.actor` 在 `pull_request` 事件中永遠是 PR 作者，不是 pusher。
-因此無法用 `github.actor != 'artogo-bot[bot]'` 來過濾 bot 的 push。
+## 建議觸發時機
 
-## 解法
+常見做法是在以下 PR 事件呼叫 reusable workflow：
 
-在 caller workflow 中，檢查最新 commit message 是否包含 `[skip-ai-review]`，若包含則跳過 AI Review。
+- `pull_request.opened`
+- `pull_request.reopened`
+- `pull_request.synchronize`
 
-## Caller Workflow 修改範例
+如果你的 product repo 希望在開發者按下 Re-request review 後也重新跑一次 AI review，可以額外接 `pull_request.review_requested`。
 
-在呼叫 reusable workflow **之前**，加入以下步驟：
+## 建議 caller workflow 範例
 
 ```yaml
+name: AI Code Review
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
 jobs:
   ai-code-review:
-    runs-on: ubuntu-latest
-    steps:
-      # 檢查最新 commit 是否為 AI auto-fix（防止無限迴圈）
-      - name: Check for skip marker
-        id: check-skip
-        run: |
-          COMMIT_MSG=$(gh api repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }} --jq '.commit.message')
-          if echo "$COMMIT_MSG" | grep -q '\[skip-ai-review\]'; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "Skipping AI review: commit has [skip-ai-review] marker"
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Call AI Code Review
-        if: steps.check-skip.outputs.skip != 'true'
-        uses: artogo/github-docs/.github/workflows/ai-code-review-reusable.yml@main
-        with:
-          # ... your inputs ...
-        secrets:
-          # ... your secrets ...
+    uses: artogo/github-docs/.github/workflows/ai-code-review-reusable.yml@main
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      pr_url: ${{ github.event.pull_request.html_url }}
+      head_branch: ${{ github.event.pull_request.head.ref }}
+      base_branch: ${{ github.event.pull_request.base.ref }}
+      repo_full_name: ${{ github.repository }}
+    secrets:
+      NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+      NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+      FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
+      BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
 ```
 
-## 替代方案（更簡潔）
+## 目前 reusable workflow 的行為
 
-如果 caller workflow 使用 `workflow_call` 而非直接 job，可以在 reusable workflow 的輸入加一個 `head_sha` 參數，
-讓 reusable workflow 內部自行檢查。目前 reusable workflow 已在 Fixer commit message 中加入 `[skip-ai-review]`，
-但因為 reusable workflow 在 `synchronize` 事件觸發時無法取得觸發 commit 的 message，
-所以需要 caller 端做第一層過濾。
+- Reviewer 組合：Claude + Codex
+- 輸入範圍：只看 PR changed files / changed hunks 的 patch bundle
+- 流程：各自 review -> 互相 critique 對方 findings -> 輸出 agreed / disputed findings
+- 不會自動修 code，也不會寫回 PR branch
+- `Review Mode = AI Only` 且 clean pass 時，仍可自動 merge
+- `Review Mode = Human Review` 時，clean pass 或 disputed-only 會把球交回人工 reviewer
+
+## 舊文件說明
+
+本檔案原本描述 `[skip-ai-review]` 防護。該機制屬於舊版 auto-fix 流程，現在已不再使用，保留此檔案是為了讓既有連結不失效。
