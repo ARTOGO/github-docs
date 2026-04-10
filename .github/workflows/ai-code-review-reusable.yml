@@ -724,7 +724,7 @@ jobs:
                     {
                       role: 'user',
                       content: [
-                        { type: 'input_text', text: userContent }
+                        { type: 'input_text', text: `請只輸出 JSON，不要加 markdown code fence。\n\n${userContent}` }
                       ]
                     }
                   ],
