@@ -270,8 +270,13 @@ jobs:
             } else if (eventName === 'pull_request') {
               if (prAction === 'opened' || prAction === 'reopened') {
                 prStatus = 'Open';
-                // 狀態變更和通知由 AI Review workflow 完成後決定
-                // 不再於 PR opened 時直接設定 TECH REVIEW
+                if (noBackwardStatuses.includes(currentStatus)) {
+                  console.log(`Status ${currentStatus} is beyond TECH REVIEW, only notifying`);
+                } else {
+                  newStatus = 'TECH REVIEW';
+                }
+                notifyUsers = techReviewers;
+                notifyMessage = '收到新的 PR，請進行 Code Review';
               } else if (prAction === 'review_requested') {
                 if (currentStatus === 'DEV IN PROGRESS') {
                   newStatus = 'TECH REVIEW';
@@ -547,7 +552,8 @@ jobs:
             } else if (eventName === 'pull_request') {
               if (prAction === 'opened' || prAction === 'reopened') {
                 fixPrStatus = 'Open';
-                // 通知由 AI Review workflow 完成後決定
+                notifyUsers = techReviewers;
+                notifyMessage = '收到新的 Fix PR，請進行 Code Review';
               } else if (prAction === 'review_requested') {
                 notifyUsers = techReviewers;
                 notifyMessage = '修復者已修改完成，請再次進行 Code Review';

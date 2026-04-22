@@ -298,10 +298,8 @@
 - PR opened / reopened：
   - 更新 `GitHub PR`
   - `PR Status = Open`
-  - `任務狀態` 與通知不在此步直接決定，改由 AI review workflow 依 review 結果決定
-    - clean pass（Human Review）→ `TECH REVIEW` + tag `Tech Reviewer`
-    - agreed findings → `DEV IN PROGRESS` + tag `指派給`
-    - disputed-only（Human Review）→ `TECH REVIEW` + tag `Tech Reviewer`
+  - `任務狀態 = TECH REVIEW`
+  - tag `Tech Reviewer`
 - PR review commented / changes requested：
   - `任務狀態 = DEV IN PROGRESS`
   - tag `指派給`
