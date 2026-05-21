@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>github-docs Notion 自動化重構與部署</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #182033;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --yellow: #ca8a04;
+      --yellow-soft: #fef3c7;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --purple: #7c3aed;
+      --purple-soft: #ede9fe;
+      --shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0, var(--bg) 280px);
+      color: var(--text);
+    }
+    .page { max-width: 1440px; margin: 0 auto; padding: 32px; }
+    h1, h2, h3, h4, h5, p { margin: 0; }
+    h1 { font-size: 34px; line-height: 1.15; letter-spacing: 0; }
+    h2 { font-size: 28px; line-height: 1.2; letter-spacing: 0; }
+    h3 { font-size: 17px; letter-spacing: 0; }
+    h4 { font-size: 14px; letter-spacing: 0; }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li + li { margin-top: 6px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+    .breadcrumbs, .eyebrow, .kpi-label, .detail-label { color: var(--muted); font-size: 12px; font-weight: 800; }
+    .topbar { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 24px; }
+    .subtitle { margin-top: 8px; color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 760px; }
+    .timestamp { color: var(--muted); font-size: 12px; text-align: right; line-height: 1.7; }
+    .hero { background: linear-gradient(135deg, #111827, #1e3a8a 62%, #2563eb); color: white; border-radius: 22px; padding: 28px; box-shadow: var(--shadow); margin-bottom: 24px; overflow: hidden; }
+    .hero-grid { display: grid; grid-template-columns: 1.4fr 0.8fr 0.8fr; gap: 22px; align-items: stretch; }
+    .hero p { color: rgba(255, 255, 255, 0.78); line-height: 1.7; font-size: 15px; }
+    .hero-card { background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 18px; }
+    .label { font-size: 12px; color: rgba(255, 255, 255, 0.74); margin-bottom: 8px; }
+    .metric-large { font-size: 42px; font-weight: 900; margin-bottom: 8px; }
+    .progress-track, .mini-track { width: 100%; height: 10px; background: #eef2f7; border-radius: 999px; overflow: hidden; }
+    .progress-track { background: rgba(255, 255, 255, 0.18); }
+    .progress-bar, .mini-fill, .bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #93c5fd, #ffffff); }
+    .mini-fill.blue, .bar span { background: var(--primary); }
+    .mini-fill.green, .tone-success .mini-bar span, .tone-success.road-segment { background: var(--green); }
+    .mini-fill.yellow, .tone-warning .mini-bar span, .tone-warning.road-segment { background: var(--yellow); }
+    .mini-fill.gray, .tone-neutral .mini-bar span, .tone-neutral.road-segment { background: #cbd5e1; }
+    .tone-purple .mini-bar span, .tone-purple.road-segment { background: var(--purple); }
+    .tone-active .mini-bar span, .tone-active.road-segment { background: var(--primary); }
+    .tone-danger .mini-bar span, .tone-danger.road-segment { background: var(--red); }
+    .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .pill.green, .pill.success { background: var(--green-soft); color: var(--green); }
+    .pill.yellow, .pill.warning { background: var(--yellow-soft); color: var(--yellow); }
+    .pill.red, .pill.danger { background: var(--red-soft); color: var(--red); }
+    .pill.blue, .pill.active { background: var(--primary-soft); color: var(--primary); }
+    .pill.purple { background: var(--purple-soft); color: var(--purple); }
+    .pill.gray, .pill.neutral { background: #f3f4f6; color: #4b5563; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .card, .panel, .task, .feature-detail, .detail-block { background: var(--card); border: 1px solid rgba(226, 232, 240, 0.95); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; min-width: 0; }
+    .card-title { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; min-width: 0; }
+    .kpi-value { font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+    .small-value { font-size: 24px; }
+    .kpi-note { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .main-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
+    .main-grid > * { min-width: 0; }
+    .section-stack { display: grid; gap: 22px; min-width: 0; }
+    .milestones { display: grid; gap: 14px; min-width: 0; }
+    .milestone-row { display: grid; grid-template-columns: minmax(110px, 180px) 1fr 70px 92px; align-items: center; gap: 12px; font-size: 14px; }
+    .milestone-row > * { min-width: 0; }
+    .feature-hub { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; align-items: stretch; min-width: 0; }
+    .feature-focus-card { border-radius: 18px; padding: 20px; background: linear-gradient(135deg, #0f172a, #1d4ed8); color: #fff; min-height: 260px; display: flex; flex-direction: column; justify-content: space-between; }
+    .feature-focus-card h3 { margin: 14px 0 8px; font-size: 25px; }
+    .feature-focus-card p { color: rgba(255,255,255,.76); line-height: 1.7; font-size: 14px; }
+    .feature-focus-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+    .feature-focus-metric { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); border-radius: 12px; padding: 12px; }
+    .feature-focus-metric small { display: block; color: rgba(255,255,255,.68); margin-bottom: 6px; font-weight: 800; font-size: 11px; }
+    .feature-focus-metric strong { font-size: 20px; }
+    .feature-list { display: grid; gap: 12px; }
+    .feature-list-item { width: 100%; border: 1px solid #e2e8f0; background: #f8fafc; color: inherit; border-radius: 14px; padding: 14px; text-align: left; font: inherit; cursor: pointer; }
+    .feature-list-item.active { border-color: #bfdbfe; background: #eff6ff; }
+    .feature-list-item:hover, .feature-list-item:focus-visible { border-color: #93c5fd; outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+    .feature-list-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+    .feature-list-title { font-weight: 950; font-size: 14px; line-height: 1.4; }
+    .feature-list-subtitle { color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 3px; }
+    .code-legend { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -4px 0 16px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .code-legend strong { color: var(--text); }
+    .feature-focus-panels, .feature-scope-panels, .feature-management-panels, .feature-panel, .feature-focus-panel, .feature-scope-panel, .feature-drawer-panel { min-width: 0; }
+    .drawer-toggle { position: fixed; right: 24px; bottom: 24px; z-index: 60; border: 0; border-radius: 999px; background: var(--text); color: #fff; padding: 12px 16px; font: inherit; font-size: 13px; font-weight: 900; box-shadow: 0 14px 30px rgba(15, 23, 42, .22); cursor: pointer; }
+    .drawer-toggle:hover, .drawer-toggle:focus-visible { background: #0f172a; outline: none; box-shadow: 0 0 0 4px rgba(37, 99, 235, .16), 0 14px 30px rgba(15, 23, 42, .22); }
+    .drawer-backdrop { position: fixed; inset: 0; z-index: 45; background: rgba(15, 23, 42, .26); opacity: 0; pointer-events: none; transition: opacity .18s ease; }
+    .feature-drawer-panels { position: fixed; top: 24px; right: 24px; z-index: 50; width: min(420px, calc(100vw - 32px)); max-height: calc(100svh - 48px); min-width: 0; transform: translateX(calc(100% + 32px)); opacity: 0; pointer-events: none; transition: transform .22s ease, opacity .18s ease; }
+    .main-grid.drawer-open .feature-drawer-panels { transform: translateX(0); opacity: 1; pointer-events: auto; }
+    .main-grid.drawer-open .drawer-backdrop { opacity: 1; pointer-events: auto; }
+    [hidden] { display: none !important; }
+    .scope-map { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 14px; margin-top: 16px; min-width: 0; }
+    .scope-column { border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 16px; padding: 14px; min-height: 220px; }
+    .scope-column-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: 950; font-size: 14px; }
+    .scope-task, .task-card, .task-row { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.035); }
+    .scope-task strong, .task-card strong { display: block; font-size: 13px; line-height: 1.45; margin-bottom: 8px; }
+    .task-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .tab-system > input { display: none; }
+    .tab-labels { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tab-labels label { border: 1px solid var(--line); background: #fff; color: var(--muted); border-radius: 999px; padding: 9px 13px; font-size: 13px; font-weight: 900; cursor: pointer; }
+    .tab-system:has(input[data-tab="overview"]:checked) .tab-labels label[data-tab="overview"], .tab-system:has(input[data-tab="kanban"]:checked) .tab-labels label[data-tab="kanban"], .tab-system:has(input[data-tab="workstream"]:checked) .tab-labels label[data-tab="workstream"], .tab-system:has(input[data-tab="timeline"]:checked) .tab-labels label[data-tab="timeline"], .tab-system:has(input[data-tab="risk"]:checked) .tab-labels label[data-tab="risk"] { background: var(--text); color: #fff; border-color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-system:has(input[data-tab="overview"]:checked) .overview-panel, .tab-system:has(input[data-tab="kanban"]:checked) .kanban-panel, .tab-system:has(input[data-tab="workstream"]:checked) .workstream-panel, .tab-system:has(input[data-tab="timeline"]:checked) .timeline-panel, .tab-system:has(input[data-tab="risk"]:checked) .risk-panel { display: block; }
+    .management-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; min-width: 0; }
+    .management-card, .gate-step { border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 14px; padding: 15px; }
+    .management-card h4, .gate-step strong { display: block; margin-bottom: 10px; }
+    .detail-value { font-size: 14px; line-height: 1.65; }
+    .readiness-gate { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; margin-top: 14px; overflow-x: auto; }
+    .gate-step small { display: block; color: var(--muted); line-height: 1.5; margin-top: 8px; }
+    .compact-kanban { align-items: start; display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap: 12px; overflow-x: auto; min-width: 0; }
+    .load-grid { display: grid; grid-template-columns: repeat(4, minmax(180px, 1fr)); gap: 12px; overflow-x: auto; min-width: 0; }
+    .mini-lane { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 10px; min-height: 0; align-self: start; }
+    .mini-lane.empty { padding-bottom: 10px; }
+    .mini-lane-title { color: var(--muted); font-size: 12px; font-weight: 900; margin-bottom: 9px; display: flex; justify-content: space-between; }
+    .timeline-ruler, .timeline-track, .timeline-now-row { display: grid; grid-template-columns: 120px repeat(6, minmax(96px, 1fr)); gap: 8px; align-items: stretch; min-width: 720px; }
+    .timeline-ruler { color: var(--muted); font-size: 12px; font-weight: 900; margin-bottom: 10px; }
+    .timeline-visual, .tab-system, .tab-panels { min-width: 0; }
+    .timeline-board { display: grid; gap: 10px; overflow-x: auto; min-width: 0; }
+    .timeline-track-label { display: flex; flex-direction: column; justify-content: center; gap: 4px; font-weight: 950; font-size: 13px; line-height: 1.35; }
+    .timeline-track-label small { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .timeline-bar { border-radius: 12px; padding: 11px 12px; min-height: 58px; display: flex; flex-direction: column; justify-content: center; font-size: 12px; font-weight: 900; }
+    .timeline-bar.success { background: var(--green-soft); color: var(--green); }
+    .timeline-bar.active { background: var(--primary-soft); color: var(--primary); }
+    .timeline-bar.warning { background: var(--yellow-soft); color: var(--yellow); }
+    .timeline-bar.danger { background: var(--red-soft); color: var(--red); }
+    .timeline-bar.neutral { background: #f1f5f9; color: #475569; }
+    .timeline-now-line { grid-column: 4 / 5; border-left: 3px solid var(--red); height: 30px; margin-left: 50%; position: relative; }
+    .timeline-now-line::after { content: "今日"; position: absolute; top: -20px; left: -20px; background: var(--red); color: #fff; border-radius: 999px; font-size: 10px; font-weight: 900; padding: 3px 7px; }
+    .blocker-diagnosis { border-color: #fecaca; background: linear-gradient(180deg, #fff7f7, #ffffff); }
+    .blocker-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; }
+    .blocker-card { background: #fff; border: 1px solid #fee2e2; border-radius: 14px; padding: 14px; }
+    .blocker-field-grid { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; font-size: 13px; line-height: 1.5; }
+    .blocker-field-grid dt { color: var(--muted); font-weight: 900; }
+    .blocker-field-grid dd { margin: 0; font-weight: 650; }
+    .impact-chain { color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .unblock-list { display: grid; gap: 9px; margin-top: 8px; font-size: 13px; line-height: 1.5; }
+    .unblock-item { display: flex; gap: 9px; align-items: flex-start; }
+    .unblock-num { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--red-soft); color: var(--red); font-size: 11px; font-weight: 950; flex: 0 0 22px; }
+    .side-card { align-self: start; min-width: 0; max-height: calc(100svh - 48px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; -webkit-overflow-scrolling: touch; }
+    .drawer-card-title { position: sticky; top: -20px; z-index: 1; background: var(--card); padding-top: 2px; }
+    .drawer-title-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .drawer-close { border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--text); padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 900; cursor: pointer; }
+    .drawer-close:hover, .drawer-close:focus-visible { border-color: #93c5fd; outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+    .detail-block-static { border-bottom: 1px solid #eef2f7; padding: 14px 0; }
+    .detail-block-static:first-of-type { padding-top: 0; }
+    .progress-detail-row { display: grid; grid-template-columns: 86px 1fr 44px; align-items: center; gap: 10px; font-size: 13px; padding: 12px 0; }
+    .checklist { display: grid; gap: 10px; margin-top: 10px; }
+    .check-item { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.5; }
+    .box { width: 18px; height: 18px; border-radius: 5px; border: 2px solid #cbd5e1; flex: 0 0 18px; margin-top: 1px; }
+    .box.done { background: var(--green); border-color: var(--green); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { color: var(--muted); text-align: left; font-size: 12px; padding: 12px 10px; border-bottom: 1px solid var(--line); font-weight: 800; }
+    td { padding: 14px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .status-row + .status-row { margin-top: 10px; }
+    .status-row-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+    .mini-bar { height: 8px; border-radius: 999px; background: #eef2f7; overflow: hidden; }
+    .mini-bar span { display: block; height: 100%; }
+    .goal-summary-grid, .goal-map { display: grid; gap: 12px; }
+    .goal-summary, .goal-group, .goal-feature, .goal-outcome { border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; background: #f8fafc; }
+    .goal-summary-head, .goal-group-head, .goal-feature-head { display: grid; grid-template-columns: minmax(0, 1fr) 80px; gap: 12px; align-items: start; }
+    .outcome-list { list-style: none; padding: 0; display: grid; gap: 8px; }
+    .outcome-list li { display: grid; grid-template-columns: minmax(0, 1fr) 52px; gap: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .goal-outcomes, .goal-feature-list, .feature-rationale, .feature-work { margin-top: 12px; }
+    .feature-rationale { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .feature-rationale div, .work-chip { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: #fff; }
+    .feature-work ul { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+    .road-track { height: 12px; display: flex; overflow: hidden; border-radius: 999px; background: #eef2f7; margin-top: 12px; }
+    .road-segment + .road-segment { border-left: 2px solid #fff; }
+    .detail-stack { display: grid; gap: 12px; margin-top: 22px; }
+    .detail-block summary { cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+    .detail-block summary strong { display: block; }
+    .detail-block summary span { color: var(--muted); font-size: 13px; }
+    .detail-body { margin-top: 14px; }
+    .feature-detail { box-shadow: none; }
+    .feature-detail + .feature-detail { margin-top: 10px; }
+    .feature-detail summary { cursor: pointer; display: grid; grid-template-columns: 72px minmax(0, 1fr) 64px; gap: 10px; align-items: center; }
+    .feature-detail summary span, .feature-detail summary em { color: var(--muted); font-style: normal; }
+    .detail-summary, .notes, .evidence span, .change-log span { color: var(--muted); }
+    .tasks { margin-top: 14px; display: grid; gap: 10px; }
+    .task { box-shadow: none; padding: 14px; }
+    .task-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .task-progress { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; margin-top: 12px; }
+    .task-head { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+    .status { border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+    .change-log { max-height: 280px; overflow: auto; }
+    .bar { height: 10px; overflow: hidden; background: #e7ecef; border-radius: 999px; }
+    @media (max-width: 1280px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 1100px) {
+      .feature-hub, .scope-map, .management-grid, .load-grid, .hero-grid, .kpi-grid, .blocker-grid { grid-template-columns: 1fr; }
+      .feature-focus-meta { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 760px) {
+      .page { padding: 18px; }
+      .topbar { flex-direction: column; }
+      .timestamp { text-align: left; }
+      .milestone-row, .task-grid, .feature-rationale, .goal-summary-head, .goal-group-head, .goal-feature-head, .outcome-list li, .detail-block summary { grid-template-columns: 1fr; }
+      .timeline-ruler, .timeline-track, .timeline-now-row { min-width: 720px; }
+      .feature-drawer-panels { top: 12px; right: 12px; width: calc(100vw - 24px); max-height: calc(100svh - 24px); }
+      .drawer-toggle { right: 16px; bottom: 16px; }
+      .side-card { max-height: 72svh; }
+      h1 { font-size: 28px; }
+    }
+    @media (max-width: 520px) {
+      .page { padding: 12px; }
+      h1 { font-size: 25px; }
+      .hero, .card, .panel, .task, .feature-detail, .goal-group, .detail-block, .goal-summary { padding: 14px; }
+      .metric-large { font-size: 34px; }
+      .feature-focus-meta, .readiness-gate { grid-template-columns: 1fr; }
+      .feature-detail summary { grid-template-columns: 1fr; }
+      .task-head { display: block; }
+      .status { display: inline-block; margin-top: 8px; }
+      .feature-work ul { display: grid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div>
+        <div class="breadcrumbs">產品 / 功能交付 / 儀表板模板</div>
+        <h1>功能進度儀表板</h1>
+        <div class="subtitle">github-docs Notion 自動化重構與部署：完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。</div>
+      </div>
+      <div class="timestamp">
+        <p>資料更新：2026-05-21T20:05:00+08:00</p>
+        <p>HTML 產生：2026-05-21T20:05:29+08:00</p>
+      </div>
+    </header>
+
+    <section class="hero" aria-label="全局總覽">
+      <div class="hero-grid">
+        <div>
+          <span class="pill warning">需補驗證</span>
+          <h2 style="margin-top: 16px;">同步 live schema 與知識庫路由</h2>
+          <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
+        </div>
+        <div class="hero-card">
+          <div class="label">整體進度</div>
+          <div class="metric-large">100%</div>
+          <div class="progress-track"><div class="progress-bar" style="width: 100%;"></div></div>
+        </div>
+        <div class="hero-card">
+          <div class="label">目前焦點</div>
+          <div style="font-size: 22px; font-weight: 900; margin-bottom: 10px;">功能 F2 · 任務 T2.6</div>
+          <p>live Notion schema / representative pages 已完成讀取驗證，本地 dry-run 已通過，接著準備分 repo commit 並推到部署分支。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="kpi-grid">
+      <article class="card">
+        <div class="kpi-label">範圍完成</div>
+        <div class="kpi-value">9 / 10</div>
+        <div class="kpi-note">已驗證任務才算真正完成；只有完成實作仍需補驗證證據。</div>
+      </article>
+      <article class="card">
+        <div class="kpi-label">目前階段</div>
+        <div class="kpi-value">已驗證</div>
+        <div class="kpi-note">用真實 Notion 資料本地 dry-run 新流程</div>
+      </article>
+      <article class="card">
+        <div class="kpi-label">阻塞項目</div>
+        <div class="kpi-value">0</div>
+        <div class="kpi-note">包含 blocked 任務與明確阻塞清單；enum 保留原文。</div>
+      </article>
+      <article class="card">
+        <div class="kpi-label">風險等級</div>
+        <div class="kpi-value">中</div>
+        <div class="kpi-note">有完成但尚未驗證的工作，或仍有未覆蓋流程。</div>
+      </article>
+    </section>
+
+    <section class="main-grid" data-feature-switcher data-task-drawer>
+      <div class="section-stack">
+        <section class="card">
+          <div class="card-title">
+            <h3>里程碑時程</h3>
+            <span class="pill blue">2 個功能</span>
+          </div>
+          <div class="milestones">
+<div class="milestone-row">
+  <strong>整理最終 migration spec</strong>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <strong>100%</strong>
+  <span class="pill success">已驗證</span>
+</div>
+
+<div class="milestone-row">
+  <strong>同步 live schema 與知識庫路由</strong>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <strong>100%</strong>
+  <span class="pill success">已驗證</span>
+</div>
+</div>
+        </section>
+
+        <section class="card">
+          <div class="card-title">
+            <h3>按功能拆解範圍</h3>
+            <span class="pill purple">單一資料來源</span>
+          </div>
+          <div class="code-legend">
+            <strong>代號說明</strong>
+            <span>功能 F4 = 第 4 個功能；任務 T4.1 = 功能 F4 底下第 1 個任務。</span>
+          </div>
+          <div class="feature-hub">
+            <div class="feature-focus-panels">
+<div id="feature-panel-f1-focus" class="feature-focus-panel" data-feature-panel="F1" hidden>
+  
+<div class="feature-focus-card">
+  <div>
+    <span class="pill success">目前功能 · 正常</span>
+    <h3>功能 F1：整理最終 migration spec</h3>
+    <p>把已定案的規則與 live workflow 保留點寫成正式規格文件，並同步反映 Phase 1 live workflow 改動。</p>
+  </div>
+  <div class="feature-focus-meta">
+    <div class="feature-focus-metric"><small>進度</small><strong>100%</strong></div>
+    <div class="feature-focus-metric"><small>任務</small><strong>4/4</strong></div>
+    <div class="feature-focus-metric"><small>阻塞</small><strong>0</strong></div>
+    <div class="feature-focus-metric"><small>焦點</small><strong>任務 T1.1</strong></div>
+  </div>
+</div>
+
+</div>
+
+<div id="feature-panel-f2-focus" class="feature-focus-panel" data-feature-panel="F2">
+  
+<div class="feature-focus-card">
+  <div>
+    <span class="pill success">目前功能 · 正常</span>
+    <h3>功能 F2：同步 live schema 與知識庫路由</h3>
+    <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
+  </div>
+  <div class="feature-focus-meta">
+    <div class="feature-focus-metric"><small>進度</small><strong>100%</strong></div>
+    <div class="feature-focus-metric"><small>任務</small><strong>5/6</strong></div>
+    <div class="feature-focus-metric"><small>阻塞</small><strong>0</strong></div>
+    <div class="feature-focus-metric"><small>焦點</small><strong>任務 T2.6</strong></div>
+  </div>
+</div>
+
+</div>
+</div>
+            <div class="feature-list">
+<button class="feature-list-item" type="button" data-feature-target="F1" aria-controls="feature-panel-f1" aria-pressed="false">
+  <div class="feature-list-top">
+    <div>
+      <div class="feature-list-title">功能 F1：整理最終 migration spec</div>
+      <div class="feature-list-subtitle">把已定案的規則與 live workflow 保留點寫成正式規格文件，並同步反映 Phase 1 live workflow 改動。</div>
+    </div>
+    <span class="pill green">100%</span>
+  </div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+</button>
+
+<button class="feature-list-item active" type="button" data-feature-target="F2" aria-controls="feature-panel-f2" aria-pressed="true">
+  <div class="feature-list-top">
+    <div>
+      <div class="feature-list-title">功能 F2：同步 live schema 與知識庫路由</div>
+      <div class="feature-list-subtitle">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</div>
+    </div>
+    <span class="pill green">100%</span>
+  </div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+</button>
+</div>
+          </div>
+          <div class="feature-scope-panels">
+<div id="feature-panel-f1" class="feature-scope-panel" data-feature-panel="F1" hidden>
+  <div class="scope-map">
+<section class="scope-column">
+  <div class="scope-column-head">文件 <span class="pill green">2/2</span></div>
+  
+<article class="scope-task">
+  <strong>確認 live workflow 中需要保留的既有行為</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T1.1</span>
+  </div>
+</article>
+
+<article class="scope-task">
+  <strong>更新 migration spec 並加入完整流程圖與工具 flow</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T1.3</span>
+  </div>
+</article>
+
+</section>
+
+<section class="scope-column">
+  <div class="scope-column-head">後端 <span class="pill green">1/1</span></div>
+  
+<article class="scope-task">
+  <strong>實作 Phase 1 workflow 去 Fix Task 化</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T1.4</span>
+  </div>
+</article>
+
+</section>
+
+<section class="scope-column">
+  <div class="scope-column-head">Product / Spec <span class="pill green">1/1</span></div>
+  
+<article class="scope-task">
+  <strong>確認 Notion 新能力的技術邊界</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T1.2</span>
+  </div>
+</article>
+
+</section>
+</div>
+</div>
+
+<div id="feature-panel-f2" class="feature-scope-panel" data-feature-panel="F2">
+  <div class="scope-map">
+<section class="scope-column">
+  <div class="scope-column-head">文件 <span class="pill yellow">1/2</span></div>
+  
+<article class="scope-task">
+  <strong>建立 progress-dashboard 基礎檔案</strong>
+  <div class="task-meta">
+    <span class="pill warning">待驗證</span>
+    <span class="pill blue">任務 T2.1</span>
+  </div>
+</article>
+
+<article class="scope-task">
+  <strong>重新產生 progress.html</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T2.2</span>
+  </div>
+</article>
+
+</section>
+
+<section class="scope-column">
+  <div class="scope-column-head">Docs / Ops <span class="pill green">2/2</span></div>
+  
+<article class="scope-task">
+  <strong>同步 Notion 技能頁與 Local Runtime 路由頁</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T2.4</span>
+  </div>
+</article>
+
+<article class="scope-task">
+  <strong>重寫本地架構文件與 Notion 產品流程頁</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T2.5</span>
+  </div>
+</article>
+
+</section>
+
+<section class="scope-column">
+  <div class="scope-column-head">Ops <span class="pill green">1/1</span></div>
+  
+<article class="scope-task">
+  <strong>確認是否可直接更新 Notion schema</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T2.3</span>
+  </div>
+</article>
+
+</section>
+
+<section class="scope-column">
+  <div class="scope-column-head">Ops / Verification <span class="pill green">1/1</span></div>
+  
+<article class="scope-task">
+  <strong>用真實 Notion 資料本地 dry-run 新流程</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T2.6</span>
+  </div>
+</article>
+
+</section>
+</div>
+</div>
+</div>
+        </section>
+
+        <div class="feature-management-panels">
+<div class="feature-panel" data-feature-panel="F1" hidden>
+  
+<section class="card">
+  <div class="card-title">
+    <h3>所選功能的管理視角</h3>
+    <span class="pill blue">同一範圍，多種視角</span>
+  </div>
+
+  <div class="tab-system">
+    <input type="radio" id="feature-f1-view-overview" name="feature-f1-view-feature-view" data-tab="overview" checked>
+    <input type="radio" id="feature-f1-view-kanban" name="feature-f1-view-feature-view" data-tab="kanban">
+    <input type="radio" id="feature-f1-view-workstream" name="feature-f1-view-feature-view" data-tab="workstream">
+    <input type="radio" id="feature-f1-view-timeline" name="feature-f1-view-feature-view" data-tab="timeline">
+    <input type="radio" id="feature-f1-view-risk" name="feature-f1-view-feature-view" data-tab="risk">
+
+    <div class="tab-labels">
+      <label for="feature-f1-view-overview" data-tab="overview">總覽地圖</label>
+      <label for="feature-f1-view-kanban" data-tab="kanban">看板</label>
+      <label for="feature-f1-view-workstream" data-tab="workstream">工作流</label>
+      <label for="feature-f1-view-timeline" data-tab="timeline">時程</label>
+      <label for="feature-f1-view-risk" data-tab="risk">風險 / 決策</label>
+    </div>
+
+    <div class="tab-panels">
+      <div class="tab-panel overview-panel">
+        <div class="management-grid">
+          <article class="management-card"><h4>目標對齊</h4><div class="detail-value">把已定案的規則與 live workflow 保留點寫成正式規格文件，並同步反映 Phase 1 live workflow 改動。</div></article>
+          <article class="management-card"><h4>目前卡點</h4><div class="detail-value">未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</div></article>
+          <article class="management-card"><h4>上線判斷</h4><div class="detail-value">必須等 P0 任務、驗收條件、驗證證據與未覆蓋清單都完成後，才可宣稱上線就緒。</div></article>
+        </div>
+        <div class="readiness-gate">
+          <article class="gate-step"><strong>1. 範圍</strong><span class="pill blue">需檢查</span><small>目標與功能關係需可追溯。</small></article>
+          <article class="gate-step"><strong>2. 實作</strong><span class="pill yellow">進行中</span><small>工作必須落到任務與驗證證據。</small></article>
+          <article class="gate-step"><strong>3. 驗證</strong><span class="pill purple">必要</span><small>實作完成不等於已驗證，必須有證據。</small></article>
+          <article class="gate-step"><strong>4. 風險</strong><span class="pill yellow">待處理</span><small>未覆蓋流程必須可見。</small></article>
+          <article class="gate-step"><strong>5. 發布</strong><span class="pill gray">受阻</span><small>skill MVP 不做完整產品化後端。</small></article>
+        </div>
+      </div>
+      <div class="tab-panel kanban-panel"><div class="compact-kanban">
+<section class="mini-lane empty">
+  <div class="mini-lane-title">可開始 <span>0</span></div>
+  <p class="muted small">無任務</p>
+</section>
+
+<section class="mini-lane empty">
+  <div class="mini-lane-title">進行中 <span>0</span></div>
+  <p class="muted small">無任務</p>
+</section>
+
+<section class="mini-lane empty">
+  <div class="mini-lane-title">審查中 <span>0</span></div>
+  <p class="muted small">無任務</p>
+</section>
+
+<section class="mini-lane empty">
+  <div class="mini-lane-title">已阻塞 <span>0</span></div>
+  <p class="muted small">無任務</p>
+</section>
+
+<section class="mini-lane">
+  <div class="mini-lane-title">已完成 <span>4</span></div>
+  
+<article class="task-card">
+  <strong>確認 live workflow 中需要保留的既有行為</strong>
+  <div class="task-meta">
+    <span class="pill purple">文件</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>確認 Notion 新能力的技術邊界</strong>
+  <div class="task-meta">
+    <span class="pill purple">Product / Spec</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>更新 migration spec 並加入完整流程圖與工具 flow</strong>
+  <div class="task-meta">
+    <span class="pill purple">文件</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>實作 Phase 1 workflow 去 Fix Task 化</strong>
+  <div class="task-meta">
+    <span class="pill purple">後端</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+</section>
+</div></div>
+      <div class="tab-panel workstream-panel"><div class="load-grid">
+<article class="management-card">
+  <h4>文件</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
+</article>
+
+<article class="management-card">
+  <h4>後端</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
+</article>
+
+<article class="management-card">
+  <h4>Product / Spec</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
+</article>
+</div></div>
+      <div class="tab-panel timeline-panel">
+<div class="timeline-visual">
+  <div class="timeline-ruler"><span></span><span>範圍</span><span>設計</span><span>實作</span><span>審查</span><span>QA</span><span>發布</span></div>
+  <div class="timeline-board">
+<div class="timeline-track">
+  <div class="timeline-track-label">文件<small>2 個任務</small></div>
+  
+<div class="timeline-bar success" style="grid-column: 1 / 3;">
+  確認 live workflow 中需要保留的既有行為
+  <small>已驗證 · 100%</small>
+</div>
+
+<div class="timeline-bar success" style="grid-column: 2 / 4;">
+  更新 migration spec 並加入完整流程圖與工具 flow
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+
+<div class="timeline-track">
+  <div class="timeline-track-label">後端<small>1 個任務</small></div>
+  
+<div class="timeline-bar success" style="grid-column: 2 / 4;">
+  實作 Phase 1 workflow 去 Fix Task 化
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+
+<div class="timeline-track">
+  <div class="timeline-track-label">Product / Spec<small>1 個任務</small></div>
+  
+<div class="timeline-bar success" style="grid-column: 3 / 5;">
+  確認 Notion 新能力的技術邊界
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+</div>
+  <div class="timeline-now-row"><span></span><div class="timeline-now-line"></div></div>
+</div>
+</div>
+      <div class="tab-panel risk-panel">
+<div class="table-wrap">
+  <table class="risk-table">
+    <thead><tr><th>類型</th><th>內容</th><th>狀態</th></tr></thead>
+    <tbody>
+<tr>
+  <td>未覆蓋</td>
+  <td>{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</td>
+  <td><span class="pill yellow">待處理</span></td>
+</tr>
+</tbody>
+  </table>
+</div>
+</div>
+    </div>
+  </div>
+</section>
+
+  
+<section class="card blocker-diagnosis">
+  <div class="card-title">
+    <h3>阻塞診斷</h3>
+    <span class="pill green">無阻塞</span>
+  </div>
+  <div class="blocker-grid">
+    <article class="blocker-card">
+      <h4>目前阻塞節點</h4>
+      <dl class="blocker-field-grid">
+        <dt>節點</dt><dd>目前沒有已阻塞任務</dd>
+        <dt>卡住原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
+        <dt>受阻原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
+        <dt>負責人</dt><dd>待指定</dd>
+        <dt>解除期限</dt><dd>待指定</dd>
+      </dl>
+    </article>
+    <article class="blocker-card">
+      <h4>影響鏈</h4>
+      <div class="impact-chain">無啟用中的影響鏈</div>
+      <h4 style="margin-top: 14px;">解除阻塞清單</h4>
+      <div class="unblock-list"><div class="unblock-item"><span class="unblock-num">1</span><span>補齊卡住原因與負責人</span></div><div class="unblock-item"><span class="unblock-num">2</span><span>確認受影響任務 / 工作流</span></div><div class="unblock-item"><span class="unblock-num">3</span><span>定義解除阻塞所需決策或行動</span></div><div class="unblock-item"><span class="unblock-num">4</span><span>解除後重新跑驗證並更新證據</span></div></div>
+    </article>
+  </div>
+</section>
+
+</div>
+
+<div class="feature-panel" data-feature-panel="F2">
+  
+<section class="card">
+  <div class="card-title">
+    <h3>所選功能的管理視角</h3>
+    <span class="pill blue">同一範圍，多種視角</span>
+  </div>
+
+  <div class="tab-system">
+    <input type="radio" id="feature-f2-view-overview" name="feature-f2-view-feature-view" data-tab="overview" checked>
+    <input type="radio" id="feature-f2-view-kanban" name="feature-f2-view-feature-view" data-tab="kanban">
+    <input type="radio" id="feature-f2-view-workstream" name="feature-f2-view-feature-view" data-tab="workstream">
+    <input type="radio" id="feature-f2-view-timeline" name="feature-f2-view-feature-view" data-tab="timeline">
+    <input type="radio" id="feature-f2-view-risk" name="feature-f2-view-feature-view" data-tab="risk">
+
+    <div class="tab-labels">
+      <label for="feature-f2-view-overview" data-tab="overview">總覽地圖</label>
+      <label for="feature-f2-view-kanban" data-tab="kanban">看板</label>
+      <label for="feature-f2-view-workstream" data-tab="workstream">工作流</label>
+      <label for="feature-f2-view-timeline" data-tab="timeline">時程</label>
+      <label for="feature-f2-view-risk" data-tab="risk">風險 / 決策</label>
+    </div>
+
+    <div class="tab-panels">
+      <div class="tab-panel overview-panel">
+        <div class="management-grid">
+          <article class="management-card"><h4>目標對齊</h4><div class="detail-value">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</div></article>
+          <article class="management-card"><h4>目前卡點</h4><div class="detail-value">未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</div></article>
+          <article class="management-card"><h4>上線判斷</h4><div class="detail-value">必須等 P0 任務、驗收條件、驗證證據與未覆蓋清單都完成後，才可宣稱上線就緒。</div></article>
+        </div>
+        <div class="readiness-gate">
+          <article class="gate-step"><strong>1. 範圍</strong><span class="pill blue">需檢查</span><small>目標與功能關係需可追溯。</small></article>
+          <article class="gate-step"><strong>2. 實作</strong><span class="pill yellow">進行中</span><small>工作必須落到任務與驗證證據。</small></article>
+          <article class="gate-step"><strong>3. 驗證</strong><span class="pill purple">必要</span><small>實作完成不等於已驗證，必須有證據。</small></article>
+          <article class="gate-step"><strong>4. 風險</strong><span class="pill yellow">待處理</span><small>未覆蓋流程必須可見。</small></article>
+          <article class="gate-step"><strong>5. 發布</strong><span class="pill gray">受阻</span><small>skill MVP 不做完整產品化後端。</small></article>
+        </div>
+      </div>
+      <div class="tab-panel kanban-panel"><div class="compact-kanban">
+<section class="mini-lane empty">
+  <div class="mini-lane-title">可開始 <span>0</span></div>
+  <p class="muted small">無任務</p>
+</section>
+
+<section class="mini-lane empty">
+  <div class="mini-lane-title">進行中 <span>0</span></div>
+  <p class="muted small">無任務</p>
+</section>
+
+<section class="mini-lane">
+  <div class="mini-lane-title">審查中 <span>1</span></div>
+  
+<article class="task-card">
+  <strong>建立 progress-dashboard 基礎檔案</strong>
+  <div class="task-meta">
+    <span class="pill purple">文件</span>
+    <span class="pill warning">待驗證</span>
+  </div>
+</article>
+
+</section>
+
+<section class="mini-lane empty">
+  <div class="mini-lane-title">已阻塞 <span>0</span></div>
+  <p class="muted small">無任務</p>
+</section>
+
+<section class="mini-lane">
+  <div class="mini-lane-title">已完成 <span>5</span></div>
+  
+<article class="task-card">
+  <strong>重新產生 progress.html</strong>
+  <div class="task-meta">
+    <span class="pill purple">文件</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>確認是否可直接更新 Notion schema</strong>
+  <div class="task-meta">
+    <span class="pill purple">Ops</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>同步 Notion 技能頁與 Local Runtime 路由頁</strong>
+  <div class="task-meta">
+    <span class="pill purple">Docs / Ops</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>重寫本地架構文件與 Notion 產品流程頁</strong>
+  <div class="task-meta">
+    <span class="pill purple">Docs / Ops</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>用真實 Notion 資料本地 dry-run 新流程</strong>
+  <div class="task-meta">
+    <span class="pill purple">Ops / Verification</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+</section>
+</div></div>
+      <div class="tab-panel workstream-panel"><div class="load-grid">
+<article class="management-card">
+  <h4>文件</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">1 未完成 / 0 已阻塞</div>
+</article>
+
+<article class="management-card">
+  <h4>Docs / Ops</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
+</article>
+
+<article class="management-card">
+  <h4>Ops</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
+</article>
+
+<article class="management-card">
+  <h4>Ops / Verification</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
+</article>
+</div></div>
+      <div class="tab-panel timeline-panel">
+<div class="timeline-visual">
+  <div class="timeline-ruler"><span></span><span>範圍</span><span>設計</span><span>實作</span><span>審查</span><span>QA</span><span>發布</span></div>
+  <div class="timeline-board">
+<div class="timeline-track">
+  <div class="timeline-track-label">文件<small>2 個任務</small></div>
+  
+<div class="timeline-bar warning" style="grid-column: 1 / 3;">
+  建立 progress-dashboard 基礎檔案
+  <small>待驗證 · 100%</small>
+</div>
+
+<div class="timeline-bar success" style="grid-column: 2 / 4;">
+  重新產生 progress.html
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+
+<div class="timeline-track">
+  <div class="timeline-track-label">Docs / Ops<small>2 個任務</small></div>
+  
+<div class="timeline-bar success" style="grid-column: 2 / 4;">
+  同步 Notion 技能頁與 Local Runtime 路由頁
+  <small>已驗證 · 100%</small>
+</div>
+
+<div class="timeline-bar success" style="grid-column: 3 / 5;">
+  重寫本地架構文件與 Notion 產品流程頁
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+
+<div class="timeline-track">
+  <div class="timeline-track-label">Ops<small>1 個任務</small></div>
+  
+<div class="timeline-bar success" style="grid-column: 3 / 5;">
+  確認是否可直接更新 Notion schema
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+
+<div class="timeline-track">
+  <div class="timeline-track-label">Ops / Verification<small>1 個任務</small></div>
+  
+<div class="timeline-bar success" style="grid-column: 4 / 6;">
+  用真實 Notion 資料本地 dry-run 新流程
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+</div>
+  <div class="timeline-now-row"><span></span><div class="timeline-now-line"></div></div>
+</div>
+</div>
+      <div class="tab-panel risk-panel">
+<div class="table-wrap">
+  <table class="risk-table">
+    <thead><tr><th>類型</th><th>內容</th><th>狀態</th></tr></thead>
+    <tbody>
+<tr>
+  <td>未覆蓋</td>
+  <td>{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</td>
+  <td><span class="pill yellow">待處理</span></td>
+</tr>
+</tbody>
+  </table>
+</div>
+</div>
+    </div>
+  </div>
+</section>
+
+  
+<section class="card blocker-diagnosis">
+  <div class="card-title">
+    <h3>阻塞診斷</h3>
+    <span class="pill green">無阻塞</span>
+  </div>
+  <div class="blocker-grid">
+    <article class="blocker-card">
+      <h4>目前阻塞節點</h4>
+      <dl class="blocker-field-grid">
+        <dt>節點</dt><dd>目前沒有已阻塞任務</dd>
+        <dt>卡住原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
+        <dt>受阻原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
+        <dt>負責人</dt><dd>待指定</dd>
+        <dt>解除期限</dt><dd>待指定</dd>
+      </dl>
+    </article>
+    <article class="blocker-card">
+      <h4>影響鏈</h4>
+      <div class="impact-chain">無啟用中的影響鏈</div>
+      <h4 style="margin-top: 14px;">解除阻塞清單</h4>
+      <div class="unblock-list"><div class="unblock-item"><span class="unblock-num">1</span><span>補齊卡住原因與負責人</span></div><div class="unblock-item"><span class="unblock-num">2</span><span>確認受影響任務 / 工作流</span></div><div class="unblock-item"><span class="unblock-num">3</span><span>定義解除阻塞所需決策或行動</span></div><div class="unblock-item"><span class="unblock-num">4</span><span>解除後重新跑驗證並更新證據</span></div></div>
+    </article>
+  </div>
+</section>
+
+</div>
+</div>
+
+        <section class="card">
+          <div class="card-title">
+            <h3>功能總覽 · 目標完成邏輯</h3>
+            <span class="pill blue">總覽地圖</span>
+          </div>
+          <p class="muted" style="margin-bottom: 14px;">先看每個目標成功條件由哪些功能支撐；完整原因、完成證明與任務證據放在下方展開區。</p>
+          <div class="goal-summary-grid">
+<article class="goal-summary goal-primary">
+  <div class="goal-summary-head">
+    <div>
+      <p class="eyebrow">G1 · 最終目標</p>
+      <h3>Notion 自動化新主流程定稿</h3>
+      <p>以 Review Issue 直修模型取代 Fix Task，並把 Worker / Custom Agent / GitHub webhook 的責任邊界定清楚。</p>
+    </div>
+    <strong>100%</strong>
+  </div>
+  <ol class="outcome-list">
+<li>
+  <div>
+    <span>O1</span>
+    <strong>可直接實作的 migration spec</strong>
+    <em>F1 整理最終 migration spec, F2 同步 live schema 與知識庫路由</em>
+  </div>
+  <b>100%</b>
+</li>
+</ol>
+</article>
+</div>
+        </section>
+
+        <section class="card">
+          <div class="card-title">
+            <h3>狀態分布與下一步</h3>
+            <span class="pill blue">全局總覽</span>
+          </div>
+          <div class="management-grid">
+            <div>
+<div class="status-row tone-success">
+  <div class="status-row-label">
+    <span>已上線</span>
+    <strong>0</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
+</div>
+
+<div class="status-row tone-success">
+  <div class="status-row-label">
+    <span>已驗證</span>
+    <strong>9</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 90%"></span></div>
+</div>
+
+<div class="status-row tone-warning">
+  <div class="status-row-label">
+    <span>測試中</span>
+    <strong>0</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
+</div>
+
+<div class="status-row tone-purple">
+  <div class="status-row-label">
+    <span>審查中</span>
+    <strong>0</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
+</div>
+
+<div class="status-row tone-active">
+  <div class="status-row-label">
+    <span>進行中</span>
+    <strong>0</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
+</div>
+
+<div class="status-row tone-warning">
+  <div class="status-row-label">
+    <span>待驗證</span>
+    <strong>1</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 10%"></span></div>
+</div>
+
+<div class="status-row tone-danger">
+  <div class="status-row-label">
+    <span>卡住</span>
+    <strong>0</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
+</div>
+
+<div class="status-row tone-neutral">
+  <div class="status-row-label">
+    <span>可開始</span>
+    <strong>0</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
+</div>
+
+<div class="status-row tone-neutral">
+  <div class="status-row-label">
+    <span>待辦</span>
+    <strong>0</strong>
+  </div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
+</div>
+</div>
+            <div><h4>下一步</h4><ol class="action-list">
+<li class="action-item tone-warning">
+  <span>待驗證</span>
+  <strong>建立 progress-dashboard 基礎檔案</strong>
+  <em>功能 F2 · 任務 T2.1 · 100%</em>
+</li>
+</ol></div>
+            <div><h4>風險 / 缺口</h4><ul><li>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</li></ul></div>
+          </div>
+        </section>
+      </div>
+
+      <button type="button" class="drawer-toggle" data-drawer-toggle aria-expanded="false" aria-controls="task-detail-drawer">顯示任務細節</button>
+      <div class="drawer-backdrop" data-drawer-close aria-hidden="true"></div>
+      <div id="task-detail-drawer" class="feature-drawer-panels" aria-hidden="true">
+<div class="feature-drawer-panel" data-feature-panel="F1" hidden>
+  
+<aside class="card side-card">
+  <div class="card-title drawer-card-title">
+    <h3>任務細節抽屜</h3>
+    <div class="drawer-title-actions">
+      <span class="pill success">已驗證</span>
+      <button type="button" class="drawer-close" data-drawer-close aria-label="收合任務細節">收合</button>
+    </div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">功能 F1 · 任務 T1.1</div>
+    <div class="detail-value"><strong>確認 live workflow 中需要保留的既有行為</strong></div>
+  </div>
+  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div><span>100%</span></div>
+  <div class="detail-block-static">
+    <div class="detail-label">進度拆解</div>
+    <div>
+<div class="progress-detail-row">
+  <strong>規格</strong>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <span>100%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>實作</strong>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <span>100%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>審查</strong>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 80%;"></div></div>
+  <span>80%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>測試</strong>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 40%;"></div></div>
+  <span>40%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>文件</strong>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 20%;"></div></div>
+  <span>20%</span>
+</div>
+</div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">工作流</div>
+    <div class="detail-value">文件</div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">修改檔案</div>
+    <div class="detail-value"><p class="muted">尚未連結檔案。</p></div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">檢查清單 / 子任務</div>
+    <div class="checklist"><p class="muted">尚未拆檢查清單。</p></div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">驗證證據</div>
+    <div class="detail-value"><ul class="evidence"><li><strong>command</strong>: sed / rg on .github/workflows/notion-pr-sync-reusable.yml and notion-review-fix-task-scheduler.yml <span>已確認現行 workflow 的保留點與方向。</span></li></ul></div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">驗收條件 / 連結 / 最新更新</div>
+    <div class="detail-value"><ul><li>列出 DONE/ABANDONED downward cascade</li><li>列出 review_requested -&gt; TECH REVIEW</li><li>列出 PR closed not merged -&gt; DEV IN PROGRESS</li><li>列出 Feature Hub rollup、reviewer inheritance、no backward guard</li></ul></div>
+  </div>
+</aside>
+
+</div>
+
+<div class="feature-drawer-panel" data-feature-panel="F2">
+  
+<aside class="card side-card">
+  <div class="card-title drawer-card-title">
+    <h3>任務細節抽屜</h3>
+    <div class="drawer-title-actions">
+      <span class="pill success">已驗證</span>
+      <button type="button" class="drawer-close" data-drawer-close aria-label="收合任務細節">收合</button>
+    </div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">功能 F2 · 任務 T2.6</div>
+    <div class="detail-value"><strong>用真實 Notion 資料本地 dry-run 新流程</strong></div>
+  </div>
+  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div><span>100%</span></div>
+  <div class="detail-block-static">
+    <div class="detail-label">進度拆解</div>
+    <div>
+<div class="progress-detail-row">
+  <strong>規格</strong>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <span>100%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>實作</strong>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <span>100%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>審查</strong>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 80%;"></div></div>
+  <span>80%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>測試</strong>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 40%;"></div></div>
+  <span>40%</span>
+</div>
+
+<div class="progress-detail-row">
+  <strong>文件</strong>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 20%;"></div></div>
+  <span>20%</span>
+</div>
+</div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">工作流</div>
+    <div class="detail-value">Ops / Verification</div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">修改檔案</div>
+    <div class="detail-value"><ul><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-create-branch-reusable.yml</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-pr-sync-reusable.yml</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-feature-hub-cascade.yml</li></ul></div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">檢查清單 / 子任務</div>
+    <div class="checklist"><p class="muted">尚未拆檢查清單。</p></div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">驗證證據</div>
+    <div class="detail-value"><ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._fetch collection://f16a2bd0-b855-4da9-8d68-273003c1ba11 <span>確認 Sprint Backlog schema 仍有 Card Type、GitHub Repo、GitHub Branch、Task ID、Parent item、Sub-item、任務狀態，且 title 欄位為展廳。</span></li><li><strong>tool</strong>: mcp__codex_apps__notion._fetch collection://43a7a9ab-12f8-440f-8b79-fd8df7ac3e67 <span>確認 Review Issue 有 Affected Repo Execution、Resolved Repo Execution、Repair Routing Summary、Repair PR URLs、Last Repair Sync At、Reopen Count。</span></li><li><strong>tool</strong>: mcp__codex_apps__notion._fetch on ISS-192, SB-2176, SB-2127, SB-2103 <span>確認真實 Review Issue 可透過 Sprint Backlog relation resolve 到 officialwebsite Repo Execution；Feature Hub child repo execution 可往上取得 parent SB。</span></li><li><strong>command</strong>: node dry-run with live Notion representative fields <span>驗證 ISS-192 -&gt; officialwebsite、Feature Hub child -&gt; feat/SB-2127_e2e_t2_auto_branch_test_child、Repair PR URL 去重、通知人員去重。</span></li><li><strong>command</strong>: ruby YAML.load_file + node --check + rg old secrets <span>github-docs reusable workflows 與五個 caller repo workflow 均通過 YAML 解析；內嵌 github-script 通過語法檢查；caller workflows 無 ANTHROPIC_API_KEY / FIX_TASK_DB_ID。</span></li></ul></div>
+  </div>
+  <div class="detail-block-static">
+    <div class="detail-label">驗收條件 / 連結 / 最新更新</div>
+    <div class="detail-value"><p class="muted">尚未記錄驗收條件。</p></div>
+  </div>
+</aside>
+
+</div>
+</div>
+    </section>
+
+    <div class="detail-stack">
+      <details class="detail-block">
+        <summary>
+          <div>
+            <strong>展開目標與功能關聯</strong>
+            <span>查看成功條件、關聯功能、為何必要、完成後證明與功能要做的事。</span>
+          </div>
+          <span>目標內功能</span>
+        </summary>
+        <div class="detail-body">
+          <h2>目標地圖</h2>
+          <p class="muted">結構：最終目標 -> 目標內功能 -> 功能要做的事。附帶工作獨立成組，不灌入核心目標進度。</p>
+          <div class="goal-map">
+<section class="goal-group goal-primary">
+  <div class="goal-group-head">
+    <div>
+      <p class="eyebrow">G1 · 最終目標</p>
+      <h2>Notion 自動化新主流程定稿</h2>
+      <p>以 Review Issue 直修模型取代 Fix Task，並把 Worker / Custom Agent / GitHub webhook 的責任邊界定清楚。</p>
+    </div>
+    <div class="goal-percent">
+      <strong>100%</strong>
+      <span>最終目標進度</span>
+    </div>
+  </div>
+  <div class="goal-outcomes"><h3>目標成功條件</h3>
+<article class="goal-outcome">
+  <div class="goal-outcome-head">
+    <p class="eyebrow">O1</p>
+    <h3>可直接實作的 migration spec</h3>
+    <p>文件內含資料模型、事件矩陣、保留/移除邏輯、流程圖與分階段落地順序。</p>
+  </div>
+  <div class="goal-feature-list">
+    <h4>關聯功能</h4>
+    
+<article class="goal-feature">
+  <div class="goal-feature-head">
+    <div>
+      <p class="eyebrow">F1</p>
+      <h3>整理最終 migration spec</h3>
+      <p>把已定案的規則與 live workflow 保留點寫成正式規格文件，並同步反映 Phase 1 live workflow 改動。</p>
+    </div>
+    <strong>100%</strong>
+  </div>
+  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-success" style="width: 25%" title="確認 live workflow 中需要保留的既有行為"></span><span class="road-segment tone-success" style="width: 25%" title="確認 Notion 新能力的技術邊界"></span><span class="road-segment tone-success" style="width: 25%" title="更新 migration spec 並加入完整流程圖與工具 flow"></span><span class="road-segment tone-success" style="width: 25%" title="實作 Phase 1 workflow 去 Fix Task 化"></span></div>
+  <div class="feature-rationale">
+    <div>
+      <h4>為何必要</h4>
+      <p>沒有正式規格就無法安全改 workflow、Notion schema 與 skill。</p>
+    </div>
+    <div>
+      <h4>完成後證明</h4>
+      <p>repo 內有更新後的 migration spec，且內容覆蓋資料模型、事件矩陣、保留/淘汰邏輯與流程圖。</p>
+    </div>
+  </div>
+  <div class="feature-work">
+    <h4>功能要做的事</h4>
+    <ul>
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>確認 live workflow 中需要保留的既有行為</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>確認 Notion 新能力的技術邊界</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>更新 migration spec 並加入完整流程圖與工具 flow</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>實作 Phase 1 workflow 去 Fix Task 化</strong>
+</li>
+</ul>
+  </div>
+</article>
+
+<article class="goal-feature">
+  <div class="goal-feature-head">
+    <div>
+      <p class="eyebrow">F2</p>
+      <h3>同步 live schema 與知識庫路由</h3>
+      <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
+    </div>
+    <strong>100%</strong>
+  </div>
+  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 17%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 17%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 17%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 17%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 17%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 17%" title="用真實 Notion 資料本地 dry-run 新流程"></span></div>
+  <div class="feature-rationale">
+    <div>
+      <h4>為何必要</h4>
+      <p>Phase 1 的真正完成條件包含 repo workflow、live schema 與知識庫路由三者一致，而不只是文件規劃完成。</p>
+    </div>
+    <div>
+      <h4>完成後證明</h4>
+      <p>progress dashboard、live schema 與 Notion skill / runtime 頁的內容都與新模型一致。</p>
+    </div>
+  </div>
+  <div class="feature-work">
+    <h4>功能要做的事</h4>
+    <ul>
+<li class="work-chip tone-warning">
+  <span>待驗證</span>
+  <strong>建立 progress-dashboard 基礎檔案</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>重新產生 progress.html</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>確認是否可直接更新 Notion schema</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>同步 Notion 技能頁與 Local Runtime 路由頁</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>重寫本地架構文件與 Notion 產品流程頁</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>用真實 Notion 資料本地 dry-run 新流程</strong>
+</li>
+</ul>
+  </div>
+</article>
+
+  </div>
+</article>
+</div>
+</section>
+</div>
+        </div>
+      </details>
+
+      <details class="detail-block">
+        <summary>
+          <div>
+            <strong>展開成功條件</strong>
+            <span>查看本任務宣稱完成前必須滿足的條件。</span>
+          </div>
+          <span>6 項</span>
+        </summary>
+        <div class="detail-body">
+          <ul><li>repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt</li><li>Review Issue 與 Sprint Backlog 的 live Notion schema 已同步完成欄位調整</li><li>公司知識庫中的 notion-product-architecture / fix-sprint-review-issues / Local Runtime 路由頁已改成新模型</li><li>本地架構文件與 Notion 產品開發流程頁都不再把舊 Fix Task 流程放在主體敘述中</li><li>保留中的既有行為與淘汰掉的舊模型行為都有明確文件與流程圖可追</li><li>本地已用真實 Notion schema / page 資料 dry-run 新流程，通過後才推到 main / master</li></ul>
+        </div>
+      </details>
+
+      <details class="detail-block">
+        <summary>
+          <div>
+            <strong>展開任務明細</strong>
+            <span>查看每個功能底下的任務、修改檔案與驗證證據。</span>
+          </div>
+          <span>10 個任務</span>
+        </summary>
+        <div class="detail-body">
+          
+<details class="feature-detail">
+  <summary>
+    <span>功能 F1</span>
+    <strong>整理最終 migration spec</strong>
+    <em>100%</em>
+  </summary>
+  <p class="detail-summary">把已定案的規則與 live workflow 保留點寫成正式規格文件，並同步反映 Phase 1 live workflow 改動。</p>
+  <div class="tasks">
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T1.1</p>
+      <h4>確認 live workflow 中需要保留的既有行為</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <p class="muted">尚未連結檔案。</p>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>command</strong>: sed / rg on .github/workflows/notion-pr-sync-reusable.yml and notion-review-fix-task-scheduler.yml <span>已確認現行 workflow 的保留點與方向。</span></li></ul>
+    </section>
+  </div>
+  
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T1.2</p>
+      <h4>確認 Notion 新能力的技術邊界</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <p class="muted">尚未連結檔案。</p>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>web</strong>: Notion official docs: Custom Agents, Workers Overview, Syncs <span>已用官方文件確認架構邊界。</span></li></ul>
+    </section>
+  </div>
+  
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T1.3</p>
+      <h4>更新 migration spec 並加入完整流程圖與工具 flow</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/docs/review-issue-ai-routing-migration.md</li></ul>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>file</strong>: /Users/peterting/Documents/artogo/github-docs/docs/review-issue-ai-routing-migration.md <span>正式 migration spec 已更新為可直接進入實作的定稿版本。</span></li></ul>
+    </section>
+  </div>
+  <p class="notes">已補齊最終決策表、完整 user flow、工具 flow、保留與移除的既有 live 行為，以及 Phase 1 到 Phase 4 的落地順序。</p>
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T1.4</p>
+      <h4>實作 Phase 1 workflow 去 Fix Task 化</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-create-branch-reusable.yml</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-pr-sync-reusable.yml</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-feature-hub-cascade.yml</li></ul>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>command</strong>: ruby -e &#x27;require &quot;yaml&quot;; YAML.load_file(...)&#x27; on all Phase 1 workflows <span>notion-create-branch-reusable、notion-pr-sync-reusable、notion-feature-hub-cascade 三支 workflow 都已通過 YAML 解析。</span></li><li><strong>command</strong>: node --check on extracted github-script blocks <span>三支 workflow 內嵌的 github-script JavaScript 都通過語法檢查。</span></li><li><strong>command</strong>: cross-repo rg + YAML validation on backend / officialwebsite / guide-tool / mailtemplate / tool-imagecompressor caller workflows <span>五個 caller repo 都已移除對 ANTHROPIC_API_KEY / FIX_TASK_DB_ID 的舊 secret 映射，並通過 YAML 解析。</span></li></ul>
+    </section>
+  </div>
+  <p class="notes">主要 workflow 已重寫；舊的 notion-review-fix-task-scheduler 已移除，Feature Hub cascade 已拆成獨立 workflow。</p>
+</article>
+</div>
+</details>
+
+<details class="feature-detail">
+  <summary>
+    <span>功能 F2</span>
+    <strong>同步 live schema 與知識庫路由</strong>
+    <em>100%</em>
+  </summary>
+  <p class="detail-summary">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
+  <div class="tasks">
+<article class="task task-done">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.1</p>
+      <h4>建立 progress-dashboard 基礎檔案</h4>
+    </div>
+    <span class="status">待驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/scripts/render_progress.py</li><li>/Users/peterting/Documents/artogo/github-docs/schemas/progress.schema.json</li><li>/Users/peterting/Documents/artogo/github-docs/progress.json</li></ul>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <p class="muted">尚未記錄驗證證據。</p>
+    </section>
+  </div>
+  
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.2</p>
+      <h4>重新產生 progress.html</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <p class="muted">尚未連結檔案。</p>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>command</strong>: python3 scripts/render_progress.py progress.json progress.html <span>progress.html 已重新產生。</span></li></ul>
+    </section>
+  </div>
+  
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.3</p>
+      <h4>確認是否可直接更新 Notion schema</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <p class="muted">尚未連結檔案。</p>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._notion_update_data_source on collection://43a7a9ab-12f8-440f-8b79-fd8df7ac3e67 and collection://f16a2bd0-b855-4da9-8d68-273003c1ba11 <span>Review Issue 已新增 Affected Repo Execution、Resolved Repo Execution、Repair Routing Summary、Repair PR URLs、Last Repair Sync At、Reopen Count；Review Issue 與 Sprint Backlog 都已移除 🔧 Fix Tasks，Sprint Backlog 也已移除 AI Dev Prompt。</span></li></ul>
+    </section>
+  </div>
+  
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.4</p>
+      <h4>同步 Notion 技能頁與 Local Runtime 路由頁</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <p class="muted">尚未連結檔案。</p>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._notion_update_page on fix-sprint-review-issues, notion-product-architecture, Local Runtime / Skills Map <span>三個 Notion 頁面都已改成 Review Issue 直修模型，並經 fetch 回讀確認內容已更新。</span></li></ul>
+    </section>
+  </div>
+  
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.5</p>
+      <h4>重寫本地架構文件與 Notion 產品流程頁</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/docs/next-agent-handover.md</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-github-automation-architecture.md</li></ul>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._notion_update_page on Notion 產品開發流程自動化 <span>Notion 正式流程頁已替換為 Review Issue 直修模型，舊 Fix Task 只保留在 Legacy Items。</span></li><li><strong>command</strong>: rg on docs/next-agent-handover.md and docs/notion-github-automation-architecture.md <span>舊模型關鍵字只出現在 legacy / removed context，不再作為主流程說明。</span></li></ul>
+    </section>
+  </div>
+  
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.6</p>
+      <h4>用真實 Notion 資料本地 dry-run 新流程</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-create-branch-reusable.yml</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-pr-sync-reusable.yml</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-feature-hub-cascade.yml</li></ul>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._fetch collection://f16a2bd0-b855-4da9-8d68-273003c1ba11 <span>確認 Sprint Backlog schema 仍有 Card Type、GitHub Repo、GitHub Branch、Task ID、Parent item、Sub-item、任務狀態，且 title 欄位為展廳。</span></li><li><strong>tool</strong>: mcp__codex_apps__notion._fetch collection://43a7a9ab-12f8-440f-8b79-fd8df7ac3e67 <span>確認 Review Issue 有 Affected Repo Execution、Resolved Repo Execution、Repair Routing Summary、Repair PR URLs、Last Repair Sync At、Reopen Count。</span></li><li><strong>tool</strong>: mcp__codex_apps__notion._fetch on ISS-192, SB-2176, SB-2127, SB-2103 <span>確認真實 Review Issue 可透過 Sprint Backlog relation resolve 到 officialwebsite Repo Execution；Feature Hub child repo execution 可往上取得 parent SB。</span></li><li><strong>command</strong>: node dry-run with live Notion representative fields <span>驗證 ISS-192 -&gt; officialwebsite、Feature Hub child -&gt; feat/SB-2127_e2e_t2_auto_branch_test_child、Repair PR URL 去重、通知人員去重。</span></li><li><strong>command</strong>: ruby YAML.load_file + node --check + rg old secrets <span>github-docs reusable workflows 與五個 caller repo workflow 均通過 YAML 解析；內嵌 github-script 通過語法檢查；caller workflows 無 ANTHROPIC_API_KEY / FIX_TASK_DB_ID。</span></li></ul>
+    </section>
+  </div>
+  <p class="notes">live Sprint Backlog title 欄位目前是「展廳」而不是舊文件中的「項目」，workflow 已改成動態抓 type=title；dry-run 也抓到並修掉 slug 截斷後尾端底線的 branch 命名問題。</p>
+</article>
+</div>
+</details>
+
+        </div>
+      </details>
+
+      <details class="detail-block">
+        <summary>
+          <div>
+            <strong>展開變更紀錄</strong>
+            <span>查看對話中造成範圍、需求或驗證狀態改變的紀錄。</span>
+          </div>
+          <span>6 筆</span>
+        </summary>
+        <div class="detail-body">
+          <ul class="change-log"><li><strong>2026-05-20T18:55:00+08:00</strong> user: 正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。<span>整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。</span></li><li><strong>2026-05-20T19:10:00+08:00</strong> user: 確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。<span>新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。</span></li><li><strong>2026-05-21T10:10:00+08:00</strong> system: 開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。<span>repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。</span></li><li><strong>2026-05-21T14:45:00+08:00</strong> tool: Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。<span>Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。</span></li><li><strong>2026-05-21T15:35:00+08:00</strong> user: 要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。<span>next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。</span></li><li><strong>2026-05-21T20:05:00+08:00</strong> user: 要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。<span>增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。</span></li></ul>
+        </div>
+      </details>
+    </div>
+  </main>
+  <script>
+    (() => {
+      function activateFeature(root, featureId) {
+        root.querySelectorAll("[data-feature-target]").forEach((button) => {
+          const active = button.dataset.featureTarget === featureId;
+          button.classList.toggle("active", active);
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        root.querySelectorAll("[data-feature-panel]").forEach((panel) => {
+          panel.hidden = panel.dataset.featurePanel !== featureId;
+        });
+      }
+
+      function setDrawerOpen(root, open) {
+        root.classList.toggle("drawer-open", open);
+        const toggle = root.querySelector("[data-drawer-toggle]");
+        const drawer = root.querySelector("#task-detail-drawer");
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+          toggle.textContent = open ? "收合任務細節" : "顯示任務細節";
+        }
+        if (drawer) {
+          drawer.setAttribute("aria-hidden", open ? "false" : "true");
+        }
+      }
+
+      document.querySelectorAll("[data-feature-switcher]").forEach((root) => {
+        const buttons = Array.from(root.querySelectorAll("[data-feature-target]"));
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => activateFeature(root, button.dataset.featureTarget));
+        });
+        const initial = buttons.find((button) => button.classList.contains("active")) || buttons[0];
+        if (initial) activateFeature(root, initial.dataset.featureTarget);
+
+        const drawerToggle = root.querySelector("[data-drawer-toggle]");
+        if (drawerToggle) {
+          drawerToggle.addEventListener("click", () => setDrawerOpen(root, !root.classList.contains("drawer-open")));
+        }
+        root.querySelectorAll("[data-drawer-close]").forEach((closeTarget) => {
+          closeTarget.addEventListener("click", () => setDrawerOpen(root, false));
+        });
+        setDrawerOpen(root, false);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        document.querySelectorAll("[data-task-drawer]").forEach((root) => setDrawerOpen(root, false));
+      });
+    })();
+  </script>
+</body>
+</html>

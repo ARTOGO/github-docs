@@ -1,4 +1,4 @@
-name: Notion → GitHub Branch (Reusable)
+name: Notion -> GitHub Branch (Reusable)
 
 on:
   workflow_call:
@@ -12,10 +12,6 @@ on:
         required: true
       NOTION_DATABASE_ID:
         required: true
-      ANTHROPIC_API_KEY:
-        required: true
-      FIX_TASK_DB_ID:
-        required: false
 
 concurrency:
   group: notion-create-branch-${{ inputs.repo_name }}
@@ -35,18 +31,14 @@ jobs:
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_NAME: ${{ inputs.repo_name }}
-          FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
         with:
           script: |
             const notionKey = process.env.NOTION_API_KEY;
             const databaseId = process.env.NOTION_DATABASE_ID;
-            const anthropicKey = process.env.ANTHROPIC_API_KEY;
             const repoName = process.env.REPO_NAME;
 
-            // Notion API helpers (with retry)
             const notionHeaders = {
               'Authorization': `Bearer ${notionKey}`,
               'Notion-Version': '2022-06-28',
@@ -87,9 +79,14 @@ jobs:
                 const body = { filter };
                 if (startCursor) body.start_cursor = startCursor;
                 const res = await notionFetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-                  method: 'POST', headers: notionHeaders, body: JSON.stringify(body)
+                  method: 'POST',
+                  headers: notionHeaders,
+                  body: JSON.stringify(body)
                 });
-                if (!res.ok) { console.error(`Notion query error:`, await res.json()); break; }
+                if (!res.ok) {
+                  console.error(`Notion query error:`, await res.json());
+                  break;
+                }
                 const page = await res.json();
                 allResults.push(...(page.results || []));
                 startCursor = page.has_more ? page.next_cursor : undefined;
@@ -97,183 +94,47 @@ jobs:
               return allResults;
             }
 
-            // ========================================
-            // Helper：讀取 Notion page content（block children，含分頁）
-            // ========================================
-            async function getPageContent(pageId, depth = 0) {
-              if (depth > 2) return ''; // 防止過深遞迴
-              const allBlocks = [];
-              let startCursor = undefined;
-              do {
-                const endpoint = `/blocks/${pageId}/children` + (startCursor ? `?start_cursor=${startCursor}` : '');
-                const data = await notionRequest(endpoint);
-                if (!data?.results) break;
-                allBlocks.push(...data.results);
-                startCursor = data.has_more ? data.next_cursor : undefined;
-              } while (startCursor);
+            function slugify(input, fallback = 'feature') {
+              const ascii = (input || '')
+                .normalize('NFKD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .slice(0, 30)
+                .replace(/^_+|_+$/g, '');
+              return ascii || fallback;
+            }
 
-              const supportedTypes = ['paragraph', 'bulleted_list_item', 'numbered_list_item',
-                'heading_1', 'heading_2', 'heading_3', 'to_do', 'toggle',
-                'bookmark', 'embed', 'link_preview', 'external_object_instance'];
-              const lines = [];
-              for (const b of allBlocks) {
-                if (!supportedTypes.includes(b.type)) continue;
-                // external_object_instance → Figma embed 等外部物件
-                if (b.type === 'external_object_instance') {
-                  const eoi = b.external_object_instance || {};
-                  const url = eoi.url || eoi.external_object_url || eoi.uri || '';
-                  if (url) {
-                    lines.push(`[外部連結] ${url}`);
-                  } else {
-                    // fallback：dump 所有字串值以擷取 URL
-                    const vals = Object.values(eoi).filter(v => typeof v === 'string' && v.startsWith('http'));
-                    if (vals.length > 0) lines.push(`[外部連結] ${vals[0]}`);
-                    else console.log(`external_object_instance keys: ${JSON.stringify(Object.keys(eoi))}`);
-                  }
-                  continue;
-                }
-                // bookmark / embed / link_preview → 取 URL
-                if (['bookmark', 'embed', 'link_preview'].includes(b.type)) {
-                  const url = b[b.type]?.url;
-                  if (url) {
-                    const caption = (b[b.type]?.caption || []).map(t => t.plain_text).join('') || '';
-                    lines.push(caption ? `${caption}: ${url}` : url);
-                  }
-                  continue;
-                }
-                const texts = b[b.type]?.rich_text || [];
-                const line = texts.map(t => t.plain_text).join('');
-                if (line.length > 0) lines.push(line);
-                // 遞迴讀取有子項的 block（toggle、nested list 等）
-                if (b.has_children) {
-                  const childContent = await getPageContent(b.id, depth + 1);
-                  if (childContent) lines.push(childContent);
+            function getPageTitle(page, fallback = 'untitled') {
+              for (const prop of Object.values(page.properties || {})) {
+                if (prop?.type === 'title') {
+                  const title = (prop.title || []).map(t => t.plain_text || '').join('').trim();
+                  if (title) return title;
                 }
               }
-              return lines.join('\n');
+              return fallback;
+            }
+
+            async function addComment(pageId, users, message) {
+              const richText = [];
+              for (let i = 0; i < users.length; i++) {
+                richText.push({ type: 'mention', mention: { type: 'user', user: { id: users[i].id } } });
+                if (i < users.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
+              }
+              richText.push({ type: 'text', text: { content: ` ${message}` } });
+              await notionFetch('https://api.notion.com/v1/comments', {
+                method: 'POST',
+                headers: notionHeaders,
+                body: JSON.stringify({ parent: { page_id: pageId }, rich_text: richText })
+              });
             }
 
             // ========================================
-            // Helper：呼叫 Claude API 產生開發 prompt
+            // 功能 1：自動建立 Repo Execution Branch
             // ========================================
-            // 讀取開發流程模板（從 github-docs repo 取得）
-            let workflowTemplate = '';
-            try {
-              const templateRes = await fetch('https://raw.githubusercontent.com/ARTOGO/github-docs/main/docs/dev-workflow-template.md');
-              if (templateRes.ok) {
-                workflowTemplate = await templateRes.text();
-              } else {
-                console.warn(`dev-workflow-template.md fetch failed: ${templateRes.status}`);
-              }
-            } catch (e) {
-              console.warn(`dev-workflow-template.md fetch error: ${e.message}`);
-            }
-
-            async function callClaudeAPI(systemPrompt, userPrompt, maxTokens = 4096) {
-              try {
-                const res = await fetch('https://api.anthropic.com/v1/messages', {
-                  method: 'POST',
-                  headers: {
-                    'x-api-key': anthropicKey,
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    model: 'claude-haiku-4-5-20251001',
-                    max_tokens: maxTokens,
-                    system: systemPrompt,
-                    messages: [{ role: 'user', content: userPrompt }]
-                  })
-                });
-                if (!res.ok) {
-                  console.error(`Claude API error: ${res.status}`);
-                  return null;
-                }
-                const data = await res.json();
-                return data.content?.[0]?.text || null;
-              } catch (e) {
-                console.error(`Claude API call failed: ${e.message}`);
-                return null;
-              }
-            }
-
-            async function generateDevPrompt(featureContent, siblingRepos, repoContent, repoNameArg, branchNameArg, figmaUrl) {
-              const systemPrompt = '你是一位技術 PM。根據需求整理出簡潔的開發需求規格，給 AI Agent 的 PM 階段使用。不要設計架構、不要規劃具體檔案或 API，只描述「要做什麼」和「做到什麼程度算完成」。後續的架構設計、UI 設計、開發實作會由 AI Agent 依照開發流程自行規劃。用繁體中文撰寫。';
-              const siblingInfo = siblingRepos.length > 0
-                ? `本功能涉及的所有 Repo：${siblingRepos.join('、')}`
-                : '（本功能僅涉及單一 Repo）';
-              const figmaSection = figmaUrl
-                ? ['## Figma 設計稿', figmaUrl, '']
-                : [];
-              const userPrompt = [
-                '## 功能需求（來自 Feature Hub）',
-                featureContent || '（無 Feature Hub，此為獨立任務）',
-                '',
-                ...figmaSection,
-                '## 相關 Repo 列表',
-                siblingInfo,
-                '',
-                '## 本 Repo 任務（來自 Repo Execution）',
-                repoContent,
-                '',
-                '## Context',
-                '- Repo: ' + repoNameArg,
-                '- Branch: ' + branchNameArg,
-                '',
-                '重要：只針對本 Repo（' + repoNameArg + '）負責的部分整理需求，不要混入其他 repo 的工作。',
-                figmaUrl ? '重要：有 Figma 設計稿，請在需求中提醒開發者必須參照 Figma 連結實作。' : '',
-                '',
-                '請產生一份需求規格，格式如下：',
-                '1. 任務摘要（2-3 句話，說明整體功能以及本 repo 在其中的角色）',
-                '2. 需求項目（條列式，描述要做什麼，不要規劃怎麼做）',
-                '3. 與其他 Repo 的關係（如有，簡述相依性和介面邊界，不要設計具體 API schema）',
-                '4. 驗收標準（怎樣算完成）'
-              ].join('\n');
-              return await callClaudeAPI(systemPrompt, userPrompt);
-            }
-
-            async function appendWorkflowTemplate(prompt) {
-              if (prompt && workflowTemplate) {
-                return prompt + '\n\n---\n\n' + workflowTemplate;
-              }
-              return prompt;
-            }
-
-            async function generateWorkspacePrompt(featureContent, repoTasks, figmaUrl) {
-              const systemPrompt = '你是一位技術 PM。根據需求整理出簡潔的跨 repo 開發需求規格，給 Workspace AI Agent 的 PM 階段使用。不要設計架構、不要規劃具體檔案或 API，只描述「要做什麼」和「做到什麼程度算完成」。後續的架構設計、UI 設計、開發實作會由 AI Agent 依照開發流程自行規劃。用繁體中文撰寫。';
-              const figmaSection = figmaUrl
-                ? ['## Figma 設計稿', figmaUrl, '']
-                : [];
-              const repoSections = repoTasks.map(rt =>
-                ['### ' + rt.repo + '（Branch: ' + rt.branch + '）', rt.content].join('\n')
-              );
-              const userPrompt = [
-                '## 功能需求（來自 Feature Hub）',
-                featureContent,
-                '',
-                ...figmaSection,
-                '## 各 Repo 任務分工',
-                ...repoSections,
-                '',
-                '重要：這是 Workspace 模式，一個 AI Agent 會同時開發所有 repo，不需要跨 repo 介面約定。',
-                figmaUrl ? '重要：有 Figma 設計稿，請在需求中提醒開發者必須參照 Figma 連結實作。' : '',
-                '',
-                '請產生一份需求規格，格式如下：',
-                '1. 功能總覽（2-3 句話，說明完整功能）',
-                '2. 各 Repo 需求（按 repo 分組，描述要做什麼，不要規劃怎麼做）',
-                '3. 驗收標準（整體功能怎樣算完成）'
-              ].join('\n');
-              const result = await callClaudeAPI(systemPrompt, userPrompt, 4096);
-              if (result && workflowTemplate) {
-                return result + '\n\n---\n\n' + workflowTemplate;
-              }
-              return result;
-            }
-
-            // ========================================
-            // 功能 1：自動建立 Branch
-            // ========================================
-            console.log('=== 功能 1：自動建立 Branch ===');
+            console.log('=== 功能 1：自動建立 Repo Execution Branch ===');
 
             const data = await queryNotionDb(databaseId, {
               and: [
@@ -288,7 +149,6 @@ jobs:
             });
             console.log(`[Create Branch] Found ${data.length} tasks for ${repoName}`);
 
-            // Cache default branch info (avoid repeated API calls inside loop)
             const repoInfo = await github.rest.repos.get({
               owner: context.repo.owner,
               repo: context.repo.repo
@@ -303,81 +163,44 @@ jobs:
 
             for (const page of data) {
               const taskIdObj = page.properties['Task ID'];
-              const taskId = taskIdObj?.unique_id ? 
-                `${taskIdObj.unique_id.prefix}-${taskIdObj.unique_id.number}` : null;
-              const title = page.properties['項目']?.title?.[0]?.plain_text || 'untitled';
-              const taskType = page.properties['任務類型']?.multi_select?.[0]?.name || '🔹 TASK';
-              
+              const taskId = taskIdObj?.unique_id
+                ? `${taskIdObj.unique_id.prefix}-${taskIdObj.unique_id.number}`
+                : null;
+              const title = getPageTitle(page);
+              const taskTypes = page.properties['任務類型']?.multi_select || [];
+              const taskTypeNames = taskTypes.map(t => t.name || '');
+
               if (!taskId) {
                 console.log('Skipping page without Task ID');
                 continue;
               }
-              
+
               console.log(`Processing: ${taskId} - ${title}`);
 
-              // Check for Feature Hub parent → use parent's Task ID for branch naming
               let branchTaskId = taskId;
-              let parentCardType = null;
               const parentRelation = page.properties['Parent item']?.relation || [];
               if (parentRelation.length > 0) {
-                const parentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, {
-                  headers: notionHeaders
-                });
-                if (parentRes.ok) {
-                  const parentPage = await parentRes.json();
-                  parentCardType = parentPage.properties?.['Card Type']?.select?.name;
-                  if (parentCardType === 'Feature Hub') {
-                    const parentTaskIdObj = parentPage.properties['Task ID'];
-                    const parentId = parentTaskIdObj?.unique_id ?
-                      `${parentTaskIdObj.unique_id.prefix}-${parentTaskIdObj.unique_id.number}` : null;
-                    if (parentId) {
-                      branchTaskId = parentId;
-                      console.log(`  Using Feature Hub Task ID: ${branchTaskId}`);
-                    }
+                const parentPage = await notionRequest(`/pages/${parentRelation[0].id}`);
+                const parentCardType = parentPage?.properties?.['Card Type']?.select?.name;
+                if (parentCardType === 'Feature Hub') {
+                  const parentTaskIdObj = parentPage.properties['Task ID'];
+                  const parentTaskId = parentTaskIdObj?.unique_id
+                    ? `${parentTaskIdObj.unique_id.prefix}-${parentTaskIdObj.unique_id.number}`
+                    : null;
+                  if (parentTaskId) {
+                    branchTaskId = parentTaskId;
+                    console.log(`  Using Feature Hub Task ID: ${branchTaskId}`);
                   }
                 }
               }
 
-              // Claude API 翻譯
-              let englishName = 'feature';
-              try {
-                const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-                  method: 'POST',
-                  headers: {
-                    'x-api-key': anthropicKey,
-                    'anthropic-version': '2023-06-01',
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    model: 'claude-haiku-4-5-20251001',
-                    max_tokens: 100,
-                    messages: [{
-                      role: 'user',
-                      content: `將以下中文功能名稱翻譯成簡短的英文 snake_case 格式，最多 30 字元，只回傳翻譯結果：\n\n${title}`
-                    }]
-                  })
-                });
-                
-                const claudeData = await claudeResponse.json();
-                englishName = claudeData.content?.[0]?.text?.trim()
-                  .toLowerCase()
-                  .replace(/[^a-z0-9_]/g, '_')
-                  .replace(/_+/g, '_')
-                  .replace(/^_+|_+$/g, '')
-                  .substring(0, 30) || 'feature';
-              } catch (e) {
-                console.log(`Translation failed: ${e.message}`);
-              }
-              
-              // Branch type
               let branchType = 'feat';
-              if (taskType.includes('BUG')) branchType = 'fix';
-              else if (taskType.includes('專案')) branchType = 'project';
-              
-              const branchName = `${branchType}/${branchTaskId}_${englishName}`;
+              if (taskTypeNames.some(name => name.includes('BUG'))) branchType = 'fix';
+              else if (taskTypeNames.some(name => name.includes('專案'))) branchType = 'project';
+
+              const branchName = `${branchType}/${branchTaskId}_${slugify(title, 'feature')}`;
               console.log(`Creating branch: ${branchName}`);
-              
-              // Create branch (using cached default branch SHA)
+
               try {
                 await github.rest.git.createRef({
                   owner: context.repo.owner,
@@ -385,7 +208,6 @@ jobs:
                   ref: `refs/heads/${branchName}`,
                   sha: defaultBranchSha
                 });
-                
                 console.log(`Branch created: ${branchName}`);
               } catch (e) {
                 if (e.status === 422) {
@@ -395,10 +217,10 @@ jobs:
                   continue;
                 }
               }
-              
-              // Update Notion
+
               const notionRes = await notionFetch(`https://api.notion.com/v1/pages/${page.id}`, {
-                method: 'PATCH', headers: notionHeaders,
+                method: 'PATCH',
+                headers: notionHeaders,
                 body: JSON.stringify({
                   properties: {
                     'GitHub Branch': { rich_text: [{ text: { content: branchName } }] }
@@ -408,190 +230,20 @@ jobs:
               if (notionRes.ok) console.log(`Updated Notion with branch: ${branchName}`);
               else console.error(`Failed to update Notion:`, await notionRes.json());
 
-              // === AI Prompt Generator ===
-              // 冪等性檢查：若已有 AI Dev Prompt，跳過
-              const existingPrompt = page.properties['AI Dev Prompt']?.rich_text?.[0]?.plain_text || '';
-              if (existingPrompt) {
-                console.log(`Skip AI Dev Prompt: already exists for ${taskId}`);
-              } else {
-                // 讀取 Feature Hub parent 資料
-                let featureContent = '';
-                let siblingRepos = [];
-                let devMode = '';
-                let promptParentPage = null;
-
-                if (parentRelation.length > 0 && parentCardType === 'Feature Hub') {
-                  const promptParentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRelation[0].id}`, { headers: notionHeaders });
-                  if (promptParentRes.ok) {
-                    promptParentPage = await promptParentRes.json();
-                    const parentTitle = promptParentPage.properties['項目']?.title?.[0]?.plain_text || '';
-                    const parentBody = await getPageContent(parentRelation[0].id);
-                    featureContent = `Feature Hub: ${parentTitle}\n${parentBody}`;
-                    devMode = promptParentPage.properties['Dev Mode']?.select?.name || 'Repo Split';
-
-                    const subItems = promptParentPage.properties['Sub-item']?.relation || [];
-                    for (const subRef of subItems) {
-                      const siblingRes = await notionFetch(`https://api.notion.com/v1/pages/${subRef.id}`, { headers: notionHeaders });
-                      if (siblingRes.ok) {
-                        const siblingPage = await siblingRes.json();
-                        const siblingRepo = siblingPage.properties?.['GitHub Repo']?.select?.name;
-                        if (siblingRepo && !siblingRepos.includes(siblingRepo)) {
-                          siblingRepos.push(siblingRepo);
-                        }
-                      }
-                    }
-                    console.log(`  Feature Hub siblings: ${siblingRepos.join(', ')}, Dev Mode: ${devMode}`);
-                  }
-                }
-
-                // 讀取 Figma 連結（優先 Repo Execution，fallback Feature Hub）
-                let figmaUrl = page.properties['Figma']?.url || '';
-                if (!figmaUrl && promptParentPage) {
-                  figmaUrl = promptParentPage.properties['Figma']?.url || '';
-                }
-                if (figmaUrl) console.log(`  Figma URL: ${figmaUrl}`);
-
-                let promptResult = null;
-
-                if (devMode === 'Workspace') {
-                  // Workspace 模式：prompt 寫在 Feature Hub，Repo Execution 不產
-                  const parentId = parentRelation[0].id;
-                  const parentExistingPrompt = promptParentPage?.properties['AI Dev Prompt']?.rich_text?.[0]?.plain_text || '';
-                  if (parentExistingPrompt) {
-                    console.log(`  Workspace prompt already exists on Feature Hub, skip`);
-                  } else {
-                    // 收集所有子卡的任務內容
-                    const repoTasks = [];
-                    const subItems = promptParentPage.properties['Sub-item']?.relation || [];
-                    for (const subRef of subItems) {
-                      const subRes = await notionFetch(`https://api.notion.com/v1/pages/${subRef.id}`, { headers: notionHeaders });
-                      if (!subRes.ok) continue;
-                      const subPage = await subRes.json();
-                      if (subPage.properties?.['Card Type']?.select?.name !== 'Repo Execution') continue;
-                      const subRepo = subPage.properties?.['GitHub Repo']?.select?.name || '';
-                      const subBranch = subPage.properties?.['GitHub Branch']?.rich_text?.[0]?.plain_text || '';
-                      const subTitle = subPage.properties['項目']?.title?.[0]?.plain_text || '';
-                      const subBody = await getPageContent(subRef.id);
-                      repoTasks.push({ repo: subRepo, branch: subBranch, content: `${subTitle}\n${subBody}` });
-                    }
-
-                    console.log(`  Generating Workspace prompt for ${repoTasks.length} repos`);
-                    const wsPrompt = await generateWorkspacePrompt(featureContent, repoTasks, figmaUrl);
-                    const finalPrompt = await appendWorkflowTemplate(wsPrompt);
-
-                    if (finalPrompt) {
-                      // 寫到 Feature Hub
-                      const writeRes = await notionFetch(`https://api.notion.com/v1/pages/${parentId}`, {
-                        method: 'PATCH', headers: notionHeaders,
-                        body: JSON.stringify({
-                          properties: {
-                            'AI Dev Prompt': { rich_text: [{ text: { content: finalPrompt.substring(0, 2000) } }] }
-                          }
-                        })
-                      });
-                      if (writeRes.ok) console.log(`  Workspace prompt written to Feature Hub`);
-
-                      // 超過 2000 字元寫 comment
-                      if (finalPrompt.length > 2000) {
-                        const fullText = `📝 AI Dev Prompt - Workspace（完整版）：\n\n${finalPrompt}`;
-                        const chunks = [];
-                        let pos = 0;
-                        while (pos < fullText.length) {
-                          let end = Math.min(pos + 2000, fullText.length);
-                          if (end < fullText.length && fullText.charCodeAt(end - 1) >= 0xD800 && fullText.charCodeAt(end - 1) <= 0xDBFF) end--;
-                          chunks.push({ type: 'text', text: { content: fullText.substring(pos, end) } });
-                          pos = end;
-                        }
-                        await notionFetch('https://api.notion.com/v1/comments', {
-                          method: 'POST', headers: notionHeaders,
-                          body: JSON.stringify({ parent: { page_id: parentId }, rich_text: chunks })
-                        });
-                        console.log(`  Full workspace prompt written to Feature Hub comment (${finalPrompt.length} chars)`);
-                      }
-                    }
-                  }
-                } else {
-                  // Repo Split 模式（預設）：prompt 寫在各 Repo Execution
-                  const cardTitle = page.properties['項目']?.title?.[0]?.plain_text || '';
-                  const cardBody = await getPageContent(page.id);
-                  const repoContent = `Repo Execution: ${cardTitle}\n${cardBody}`;
-
-                  const rawPrompt = await generateDevPrompt(featureContent, siblingRepos, repoContent, repoName, branchName, figmaUrl);
-                  promptResult = await appendWorkflowTemplate(rawPrompt);
-                }
-
-                // 3. 回寫到 Notion
-                if (promptResult) {
-                  const writeRes = await notionFetch(`https://api.notion.com/v1/pages/${page.id}`, {
-                    method: 'PATCH', headers: notionHeaders,
-                    body: JSON.stringify({
-                      properties: {
-                        'AI Dev Prompt': {
-                          rich_text: [{ text: { content: promptResult.substring(0, 2000) } }]
-                        }
-                      }
-                    })
-                  });
-                  if (writeRes.ok) console.log(`AI Dev Prompt written for ${taskId}`);
-                  else console.error(`Failed to write AI Dev Prompt:`, await writeRes.json());
-
-                  // 超過 2000 字元時，完整版寫到 comment（每段不超過 2000 字，避免切斷 surrogate pair）
-                  if (promptResult.length > 2000) {
-                    const fullText = `📝 AI Dev Prompt（完整版）：\n\n${promptResult}`;
-                    const chunks = [];
-                    let pos = 0;
-                    while (pos < fullText.length) {
-                      let end = Math.min(pos + 2000, fullText.length);
-                      // 避免切斷 surrogate pair（高位元在 0xD800-0xDBFF）
-                      if (end < fullText.length && fullText.charCodeAt(end - 1) >= 0xD800 && fullText.charCodeAt(end - 1) <= 0xDBFF) {
-                        end--;
-                      }
-                      chunks.push({ type: 'text', text: { content: fullText.substring(pos, end) } });
-                      pos = end;
-                    }
-                    await notionFetch('https://api.notion.com/v1/comments', {
-                      method: 'POST', headers: notionHeaders,
-                      body: JSON.stringify({ parent: { page_id: page.id }, rich_text: chunks })
-                    });
-                    console.log(`  Full prompt written to comment (${promptResult.length} chars)`);
-                  }
-                } else if (devMode !== 'Workspace') {
-                  console.warn(`AI Dev Prompt generation failed for ${taskId}, branch still created`);
-                }
-
-                // 4. 通知 Developer
-                const developers = page.properties['Developer']?.people || [];
-                const assignees = page.properties['指派給']?.people || [];
-                const notifyUsers = developers.length > 0 ? developers : assignees;
-
-                if (notifyUsers.length > 0) {
-                  const richText = [];
-                  for (let i = 0; i < notifyUsers.length; i++) {
-                    richText.push({ type: 'mention', mention: { type: 'user', user: { id: notifyUsers[i].id } } });
-                    if (i < notifyUsers.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
-                  }
-
-                  const hasPrompt = promptResult ? '\n已自動產生 AI Dev Prompt，可直接複製至本機使用 claude -p 進行開發' : '';
-                  richText.push({
-                    type: 'text',
-                    text: { content: ` Branch 已建立：${branchName}${hasPrompt}` }
-                  });
-
-                  const notifyRes = await notionFetch('https://api.notion.com/v1/comments', {
-                    method: 'POST', headers: notionHeaders,
-                    body: JSON.stringify({ parent: { page_id: page.id }, rich_text: richText })
-                  });
-                  if (notifyRes.ok) console.log(`Notified developer about branch and AI Dev Prompt`);
-                  else console.error(`Failed to notify developer:`, await notifyRes.json());
-                }
-              } // end of AI Prompt Generator
+              const developers = page.properties['Developer']?.people || [];
+              const assignees = page.properties['指派給']?.people || [];
+              const notifyUsers = developers.length > 0 ? developers : assignees;
+              if (notifyUsers.length > 0) {
+                await addComment(page.id, notifyUsers, `Branch 已建立：${branchName}`);
+                console.log(`Notified developer/assignee about branch: ${branchName}`);
+              }
             }
-            
+
             // ========================================
-            // 功能 2：Function Review 失敗通知
+            // 功能 2：Repo Execution Function Review Failed
             // ========================================
-            console.log('=== 功能 2：Function Review 失敗通知 ===');
-            
+            console.log('=== 功能 2：Repo Execution Function Review Failed ===');
+
             const failedData = await queryNotionDb(databaseId, {
               and: [
                 { property: '任務狀態', status: { equals: 'FUNC REVIEW FAILED' } },
@@ -601,270 +253,39 @@ jobs:
               ]
             });
             console.log(`[Func Review Failed] Found ${failedData.length} tasks for ${repoName}`);
-            
+
             for (const page of failedData) {
               const taskIdObj = page.properties['Task ID'];
-              const taskId = taskIdObj?.unique_id ?
-                `${taskIdObj.unique_id.prefix}-${taskIdObj.unique_id.number}` : null;
-              const title = page.properties['項目']?.title?.[0]?.plain_text || 'untitled';
+              const taskId = taskIdObj?.unique_id
+                ? `${taskIdObj.unique_id.prefix}-${taskIdObj.unique_id.number}`
+                : null;
+              const title = getPageTitle(page);
               const developers = page.properties['Developer']?.people || [];
               const assignees = page.properties['指派給']?.people || [];
               const prUrl = page.properties['GitHub PR']?.url || '';
-
-              // 優先通知 Developer，fallback 到指派給
               const notifyUsers = developers.length > 0 ? developers : assignees;
 
               console.log(`Processing failed review: ${taskId} - ${title}`);
 
-              // 發送通知給 Developer
               if (notifyUsers.length > 0) {
-                const richText = [];
-
-                for (let i = 0; i < notifyUsers.length; i++) {
-                  richText.push({
-                    type: 'mention',
-                    mention: {
-                      type: 'user',
-                      user: { id: notifyUsers[i].id }
-                    }
-                  });
-                  if (i < notifyUsers.length - 1) {
-                    richText.push({ type: 'text', text: { content: ' ' } });
-                  }
-                }
-
-                richText.push({
-                  type: 'text',
-                  text: { content: ` Function Review 未通過，請進行調整後重新開 PR\n原 PR: ${prUrl}` }
-                });
-
-                const commentResponse = await notionFetch('https://api.notion.com/v1/comments', {
-                  method: 'POST', headers: notionHeaders,
-                  body: JSON.stringify({ parent: { page_id: page.id }, rich_text: richText })
-                });
-
-                if (commentResponse.ok) {
-                  console.log(`Notified developers: ${notifyUsers.map(u => u.name || u.id).join(', ')}`);
-                } else {
-                  const error = await commentResponse.json();
-                  console.error('Failed to add comment:', error);
-                }
+                await addComment(page.id, notifyUsers, `Function Review 未通過，請進行調整後重新開 PR\n原 PR: ${prUrl}`);
+                console.log(`Notified developers/assignees: ${notifyUsers.map(u => u.name || u.id).join(', ')}`);
               }
 
-              // 把狀態改回 DEV IN PROGRESS，指派給改為 Developer（保留 PR 欄位供參考）
               const updateProps = {
                 '任務狀態': { status: { name: 'DEV IN PROGRESS' } }
               };
-
-              // 把指派給改為 Developer
               if (developers.length > 0) {
                 updateProps['指派給'] = { people: developers.map(d => ({ id: d.id })) };
               }
 
               const resetRes = await notionFetch(`https://api.notion.com/v1/pages/${page.id}`, {
-                method: 'PATCH', headers: notionHeaders,
+                method: 'PATCH',
+                headers: notionHeaders,
                 body: JSON.stringify({ properties: updateProps })
               });
-              if (resetRes.ok) console.log(`Reset status to DEV IN PROGRESS, assigned to Developer: ${taskId}`);
+              if (resetRes.ok) console.log(`Reset status to DEV IN PROGRESS: ${taskId}`);
               else console.error(`Failed to reset status:`, await resetRes.json());
-            }
-
-            // NOTE: Feature Hub cascades (FUNC REVIEW FAILED, DONE, ABANDONED) moved to
-            // notion-review-fix-task-scheduler.yml to avoid N-fold duplicate execution per repo
-
-            // ========================================
-            // 功能 3：為 Fix Task 建立修復分支
-            // ========================================
-            const fixTaskDbId = process.env.FIX_TASK_DB_ID;
-            if (!fixTaskDbId) {
-              console.log('=== 功能 3：跳過（FIX_TASK_DB_ID 未設定）===');
-            } else {
-              console.log('=== 功能 3：為 Fix Task 建立修復分支 ===');
-
-              // 3a. 建立修復分支（只處理 Open/Fixing 且無 Fix Branch 的）
-              const fixTaskData = await queryNotionDb(fixTaskDbId, {
-                and: [
-                  { property: 'GitHub Repo', select: { equals: repoName } },
-                  { property: 'Fix Branch', rich_text: { is_empty: true } },
-                  { or: [
-                    { property: '狀態', status: { equals: 'Open' } },
-                    { property: '狀態', status: { equals: 'Fixing' } }
-                  ]}
-                ]
-              });
-              console.log(`[Fix Task Branch] Found ${fixTaskData.length} Fix Tasks for ${repoName}`);
-
-              for (const fixTask of fixTaskData) {
-                const fixTaskIdObj = fixTask.properties['Fix Task ID'];
-                const fixTaskId = fixTaskIdObj?.unique_id ?
-                  `${fixTaskIdObj.unique_id.prefix}-${fixTaskIdObj.unique_id.number}` : null;
-                const fixTitle = fixTask.properties['修復項目']?.title?.[0]?.plain_text || 'fix';
-
-                if (!fixTaskId) {
-                  console.log('Skipping Fix Task without ID');
-                  continue;
-                }
-
-                console.log(`Processing Fix Task: ${fixTaskId} - ${fixTitle}`);
-
-                // 翻譯修復項目名稱
-                let englishName = 'fix';
-                try {
-                  const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                      'x-api-key': anthropicKey,
-                      'anthropic-version': '2023-06-01',
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                      model: 'claude-haiku-4-5-20251001',
-                      max_tokens: 100,
-                      messages: [{
-                        role: 'user',
-                        content: `將以下中文修復描述翻譯成簡短的英文 snake_case 格式，最多 30 字元，只回傳翻譯結果：\n\n${fixTitle}`
-                      }]
-                    })
-                  });
-
-                  const claudeData = await claudeResponse.json();
-                  englishName = claudeData.content?.[0]?.text?.trim()
-                    .toLowerCase()
-                    .replace(/[^a-z0-9_]/g, '_')
-                    .replace(/_+/g, '_')
-                    .replace(/^_+|_+$/g, '')
-                    .substring(0, 30) || 'fix';
-                } catch (e) {
-                  console.log(`Translation failed: ${e.message}`);
-                }
-
-                const fixBranchName = `fix/${fixTaskId}_${englishName}`;
-                console.log(`Creating fix branch: ${fixBranchName}`);
-
-                // 從 staging 分支切出（Fix Task 修的是 staging 上的問題）
-                try {
-                  let baseBranch = 'staging';
-                  try {
-                    await github.rest.git.getRef({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      ref: `heads/staging`
-                    });
-                  } catch (e) {
-                    // 如果 staging 不存在，用 default branch
-                    const repoInfo = await github.rest.repos.get({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo
-                    });
-                    baseBranch = repoInfo.data.default_branch;
-                    console.log(`staging branch not found, using ${baseBranch}`);
-                  }
-
-                  const ref = await github.rest.git.getRef({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    ref: `heads/${baseBranch}`
-                  });
-
-                  await github.rest.git.createRef({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    ref: `refs/heads/${fixBranchName}`,
-                    sha: ref.data.object.sha
-                  });
-
-                  console.log(`Fix branch created: ${fixBranchName} (from ${baseBranch})`);
-                } catch (e) {
-                  if (e.status === 422) {
-                    console.log(`Fix branch already exists: ${fixBranchName}`);
-                  } else {
-                    console.error(`Failed to create fix branch: ${e.message}`);
-                    continue;
-                  }
-                }
-
-                // 回寫 Fix Branch + 狀態 Fixing 到 Notion
-                const fixNotionRes = await notionFetch(`https://api.notion.com/v1/pages/${fixTask.id}`, {
-                  method: 'PATCH', headers: notionHeaders,
-                  body: JSON.stringify({
-                    properties: {
-                      'Fix Branch': { rich_text: [{ text: { content: fixBranchName } }] },
-                      '狀態': { status: { name: 'Fixing' } }
-                    }
-                  })
-                });
-                if (fixNotionRes.ok) console.log(`Updated Fix Task with branch: ${fixBranchName}`);
-                else console.error(`Failed to update Fix Task:`, await fixNotionRes.json());
-              }
-
-              // 3b. Won't Fix 且有 Fix Branch → 通知 reviewer 刪除分支
-              const wontFixData = await queryNotionDb(fixTaskDbId, {
-                and: [
-                  { property: 'GitHub Repo', select: { equals: repoName } },
-                  { property: 'Fix Branch', rich_text: { is_not_empty: true } },
-                  { property: '狀態', status: { equals: "Won't Fix" } }
-                ]
-              });
-              console.log(`[Fix Task Cleanup] Found ${wontFixData.length} Won't Fix tasks with branches`);
-
-              for (const wfTask of wontFixData) {
-                const wfBranch = wfTask.properties['Fix Branch']?.rich_text?.[0]?.plain_text || '';
-                const wfTitle = wfTask.properties['修復項目']?.title?.[0]?.plain_text || '';
-                const wfFixers = wfTask.properties['修復者']?.people || [];
-
-                // Get Tech Reviewer from Repo Execution
-                let reviewerToNotify = [];
-                const reRelation = wfTask.properties['Repo Execution']?.relation || [];
-                if (reRelation.length > 0) {
-                  const reRes = await notionFetch(`https://api.notion.com/v1/pages/${reRelation[0].id}`, {
-                    headers: notionHeaders
-                  });
-                  if (reRes.ok) {
-                    const rePage = await reRes.json();
-                    reviewerToNotify = rePage.properties?.['Tech Reviewer']?.people || [];
-                    if (reviewerToNotify.length === 0) {
-                      const parentRel = rePage.properties?.['Parent item']?.relation || [];
-                      if (parentRel.length > 0) {
-                        const parentRes = await notionFetch(`https://api.notion.com/v1/pages/${parentRel[0].id}`, {
-                          headers: notionHeaders
-                        });
-                        if (parentRes.ok) {
-                          const parentPage = await parentRes.json();
-                          if (parentPage.properties?.['Card Type']?.select?.name === 'Feature Hub') {
-                            reviewerToNotify = parentPage.properties?.['Tech Reviewer']?.people || [];
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-
-                const notifyPeople = reviewerToNotify.length > 0 ? reviewerToNotify : wfFixers;
-                if (notifyPeople.length > 0) {
-                  const richText = [];
-                  for (let i = 0; i < notifyPeople.length; i++) {
-                    richText.push({ type: 'mention', mention: { type: 'user', user: { id: notifyPeople[i].id } } });
-                    if (i < notifyPeople.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
-                  }
-                  richText.push({ type: 'text', text: { content: ` Fix Task「${wfTitle}」已標記 Won't Fix，請刪除分支：${wfBranch}` } });
-
-                  await notionFetch('https://api.notion.com/v1/comments', {
-                    method: 'POST', headers: notionHeaders,
-                    body: JSON.stringify({ parent: { page_id: wfTask.id }, rich_text: richText })
-                  });
-                  console.log(`Notified to delete branch ${wfBranch} for Won't Fix task`);
-                }
-
-                // Clear Fix Branch to avoid re-notifying
-                const clearRes = await notionFetch(`https://api.notion.com/v1/pages/${wfTask.id}`, {
-                  method: 'PATCH', headers: notionHeaders,
-                  body: JSON.stringify({
-                    properties: { 'Fix Branch': { rich_text: [] } }
-                  })
-                });
-                if (clearRes.ok) console.log(`Cleared Fix Branch for Won't Fix task`);
-                else console.error(`Failed to clear Fix Branch:`, await clearRes.json());
-              }
             }
 
       - name: Alert on failure

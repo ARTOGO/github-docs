@@ -1,0 +1,371 @@
+{
+  "project": "github-docs Notion 自動化重構與部署",
+  "updated_at": "2026-05-21T20:05:00+08:00",
+  "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
+  "success_criteria": [
+    "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
+    "Review Issue 與 Sprint Backlog 的 live Notion schema 已同步完成欄位調整",
+    "公司知識庫中的 notion-product-architecture / fix-sprint-review-issues / Local Runtime 路由頁已改成新模型",
+    "本地架構文件與 Notion 產品開發流程頁都不再把舊 Fix Task 流程放在主體敘述中",
+    "保留中的既有行為與淘汰掉的舊模型行為都有明確文件與流程圖可追",
+    "本地已用真實 Notion schema / page 資料 dry-run 新流程，通過後才推到 main / master"
+  ],
+  "current_focus": {
+    "feature_id": "F2",
+    "task_id": "T2.6",
+    "summary": "live Notion schema / representative pages 已完成讀取驗證，本地 dry-run 已通過，接著準備分 repo commit 並推到部署分支。"
+  },
+  "conversation_changes": [
+    {
+      "at": "2026-05-20T18:55:00+08:00",
+      "source": "user",
+      "change": "正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。",
+      "impact": "整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。"
+    },
+    {
+      "at": "2026-05-20T19:10:00+08:00",
+      "source": "user",
+      "change": "確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。",
+      "impact": "新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。"
+    },
+    {
+      "at": "2026-05-21T10:10:00+08:00",
+      "source": "system",
+      "change": "開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。",
+      "impact": "repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。"
+    },
+    {
+      "at": "2026-05-21T14:45:00+08:00",
+      "source": "tool",
+      "change": "Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。",
+      "impact": "Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。"
+    },
+    {
+      "at": "2026-05-21T15:35:00+08:00",
+      "source": "user",
+      "change": "要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。",
+      "impact": "next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。"
+    },
+    {
+      "at": "2026-05-21T20:05:00+08:00",
+      "source": "user",
+      "change": "要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。",
+      "impact": "增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。"
+    }
+  ],
+  "goal_groups": [
+    {
+      "id": "G1",
+      "title": "Notion 自動化新主流程定稿",
+      "summary": "以 Review Issue 直修模型取代 Fix Task，並把 Worker / Custom Agent / GitHub webhook 的責任邊界定清楚。",
+      "kind": "primary",
+      "feature_ids": ["F1", "F2"],
+      "outcomes": [
+        {
+          "id": "O1",
+          "title": "可直接實作的 migration spec",
+          "description": "文件內含資料模型、事件矩陣、保留/移除邏輯、流程圖與分階段落地順序。",
+          "feature_ids": ["F1", "F2"]
+        }
+      ]
+    }
+  ],
+  "features": [
+    {
+      "id": "F1",
+      "title": "整理最終 migration spec",
+      "summary": "把已定案的規則與 live workflow 保留點寫成正式規格文件，並同步反映 Phase 1 live workflow 改動。",
+      "status": "doing",
+      "goal_contributions": [
+        {
+          "outcome_id": "O1",
+          "why": "沒有正式規格就無法安全改 workflow、Notion schema 與 skill。",
+          "completion_signal": "repo 內有更新後的 migration spec，且內容覆蓋資料模型、事件矩陣、保留/淘汰邏輯與流程圖。"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T1.1",
+          "title": "確認 live workflow 中需要保留的既有行為",
+          "status": "verified",
+          "workstream": "Docs",
+          "progress_percent": 100,
+          "acceptance_criteria": [
+            "列出 DONE/ABANDONED downward cascade",
+            "列出 review_requested -> TECH REVIEW",
+            "列出 PR closed not merged -> DEV IN PROGRESS",
+            "列出 Feature Hub rollup、reviewer inheritance、no backward guard"
+          ],
+          "evidence": [
+            {
+              "type": "command",
+              "ref": "sed / rg on .github/workflows/notion-pr-sync-reusable.yml and notion-review-fix-task-scheduler.yml",
+              "result": "已確認現行 workflow 的保留點與方向。"
+            }
+          ]
+        },
+        {
+          "id": "T1.2",
+          "title": "確認 Notion 新能力的技術邊界",
+          "status": "verified",
+          "workstream": "Product / Spec",
+          "progress_percent": 100,
+          "acceptance_criteria": [
+            "確認 Custom Agent 可綁定 database create/update/comment/schedule 類觸發",
+            "確認 Worker 適合承接 tool / webhook / sync",
+            "確認 Sync 不能直接接管既有 Sprint / Review Issue DB"
+          ],
+          "evidence": [
+            {
+              "type": "web",
+              "ref": "Notion official docs: Custom Agents, Workers Overview, Syncs",
+              "result": "已用官方文件確認架構邊界。"
+            }
+          ]
+        },
+        {
+          "id": "T1.3",
+          "title": "更新 migration spec 並加入完整流程圖與工具 flow",
+          "status": "verified",
+          "workstream": "Docs",
+          "progress_percent": 100,
+          "acceptance_criteria": [
+            "補齊最終決策表",
+            "補齊完整 user flow",
+            "補齊工具 flow 與 Phase 1 / Phase 2"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/docs/review-issue-ai-routing-migration.md"
+          ],
+          "notes": "已補齊最終決策表、完整 user flow、工具 flow、保留與移除的既有 live 行為，以及 Phase 1 到 Phase 4 的落地順序。",
+          "evidence": [
+            {
+              "type": "file",
+              "ref": "/Users/peterting/Documents/artogo/github-docs/docs/review-issue-ai-routing-migration.md",
+              "result": "正式 migration spec 已更新為可直接進入實作的定稿版本。"
+            }
+          ]
+        }
+        ,
+        {
+          "id": "T1.4",
+          "title": "實作 Phase 1 workflow 去 Fix Task 化",
+          "status": "verified",
+          "workstream": "Backend",
+          "progress_percent": 100,
+          "acceptance_criteria": [
+            "branch reusable 不再依賴 AI Dev Prompt 與 Fix Task",
+            "PR sync reusable 不再依賴 FIX-* 與 Fix Task 完成判定",
+            "Feature Hub cascade 從舊 scheduler 拆成獨立 workflow"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-create-branch-reusable.yml",
+            "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-pr-sync-reusable.yml",
+            "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-feature-hub-cascade.yml"
+          ],
+          "notes": "主要 workflow 已重寫；舊的 notion-review-fix-task-scheduler 已移除，Feature Hub cascade 已拆成獨立 workflow。",
+          "evidence": [
+            {
+              "type": "command",
+              "ref": "ruby -e 'require \"yaml\"; YAML.load_file(...)' on all Phase 1 workflows",
+              "result": "notion-create-branch-reusable、notion-pr-sync-reusable、notion-feature-hub-cascade 三支 workflow 都已通過 YAML 解析。"
+            },
+            {
+              "type": "command",
+              "ref": "node --check on extracted github-script blocks",
+              "result": "三支 workflow 內嵌的 github-script JavaScript 都通過語法檢查。"
+            },
+            {
+              "type": "command",
+              "ref": "cross-repo rg + YAML validation on backend / officialwebsite / guide-tool / mailtemplate / tool-imagecompressor caller workflows",
+              "result": "五個 caller repo 都已移除對 ANTHROPIC_API_KEY / FIX_TASK_DB_ID 的舊 secret 映射，並通過 YAML 解析。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F2",
+      "title": "同步 live schema 與知識庫路由",
+      "summary": "讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。",
+      "status": "doing",
+      "goal_contributions": [
+        {
+          "outcome_id": "O1",
+          "why": "Phase 1 的真正完成條件包含 repo workflow、live schema 與知識庫路由三者一致，而不只是文件規劃完成。",
+          "completion_signal": "progress dashboard、live schema 與 Notion skill / runtime 頁的內容都與新模型一致。"
+        }
+      ],
+      "tasks": [
+        {
+          "id": "T2.1",
+          "title": "建立 progress-dashboard 基礎檔案",
+          "status": "done",
+          "workstream": "Docs",
+          "progress_percent": 100,
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/scripts/render_progress.py",
+            "/Users/peterting/Documents/artogo/github-docs/schemas/progress.schema.json",
+            "/Users/peterting/Documents/artogo/github-docs/progress.json"
+          ]
+        },
+        {
+          "id": "T2.2",
+          "title": "重新產生 progress.html",
+          "status": "verified",
+          "workstream": "Docs",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "progress.html 產生成功",
+            "畫面內容與 progress.json 同步"
+          ],
+          "evidence": [
+            {
+              "type": "command",
+              "ref": "python3 scripts/render_progress.py progress.json progress.html",
+              "result": "progress.html 已重新產生。"
+            }
+          ]
+        },
+        {
+          "id": "T2.3",
+          "title": "確認是否可直接更新 Notion schema",
+          "status": "verified",
+          "workstream": "Ops",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "成功 fetch live Review Issue data source",
+            "成功新增 Review Issue 關聯與 repair 欄位"
+          ],
+          "evidence": [
+            {
+              "type": "tool",
+              "ref": "mcp__codex_apps__notion._notion_update_data_source on collection://43a7a9ab-12f8-440f-8b79-fd8df7ac3e67 and collection://f16a2bd0-b855-4da9-8d68-273003c1ba11",
+              "result": "Review Issue 已新增 Affected Repo Execution、Resolved Repo Execution、Repair Routing Summary、Repair PR URLs、Last Repair Sync At、Reopen Count；Review Issue 與 Sprint Backlog 都已移除 🔧 Fix Tasks，Sprint Backlog 也已移除 AI Dev Prompt。"
+            }
+          ]
+        },
+        {
+          "id": "T2.4",
+          "title": "同步 Notion 技能頁與 Local Runtime 路由頁",
+          "status": "verified",
+          "workstream": "Docs / Ops",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "fix-sprint-review-issues Notion skill 頁改成 Review Issue 直修模型",
+            "notion-product-architecture Notion skill 頁改成新資料模型",
+            "Local Runtime / Skills Map 不再把 github-docs repo-local skills 描述成 Fix Task 模型"
+          ],
+          "evidence": [
+            {
+              "type": "tool",
+              "ref": "mcp__codex_apps__notion._notion_update_page on fix-sprint-review-issues, notion-product-architecture, Local Runtime / Skills Map",
+              "result": "三個 Notion 頁面都已改成 Review Issue 直修模型，並經 fetch 回讀確認內容已更新。"
+            }
+          ]
+        },
+        {
+          "id": "T2.5",
+          "title": "重寫本地架構文件與 Notion 產品流程頁",
+          "status": "verified",
+          "workstream": "Docs / Ops",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "next-agent handover 主體改成 Review Issue 直修模型",
+            "automation architecture 主體改成 Review Issue 直修模型",
+            "Notion 產品開發流程自動化頁改成 Review Issue 直修模型"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/docs/next-agent-handover.md",
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-github-automation-architecture.md"
+          ],
+          "evidence": [
+            {
+              "type": "tool",
+              "ref": "mcp__codex_apps__notion._notion_update_page on Notion 產品開發流程自動化",
+              "result": "Notion 正式流程頁已替換為 Review Issue 直修模型，舊 Fix Task 只保留在 Legacy Items。"
+            },
+            {
+              "type": "command",
+              "ref": "rg on docs/next-agent-handover.md and docs/notion-github-automation-architecture.md",
+              "result": "舊模型關鍵字只出現在 legacy / removed context，不再作為主流程說明。"
+            }
+          ]
+        },
+        {
+          "id": "T2.6",
+          "title": "用真實 Notion 資料本地 dry-run 新流程",
+          "status": "verified",
+          "workstream": "Ops / Verification",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "fetch live Sprint Backlog schema 並確認 title 欄位",
+            "fetch live Review Issue schema 並確認新 repair 欄位",
+            "用真實代表卡片資料 dry-run Repo Execution / Review Issue / Feature Hub routing",
+            "重新跑 YAML / github-script / caller cleanup 驗證"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-create-branch-reusable.yml",
+            "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-pr-sync-reusable.yml",
+            "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-feature-hub-cascade.yml"
+          ],
+          "notes": "live Sprint Backlog title 欄位目前是「展廳」而不是舊文件中的「項目」，workflow 已改成動態抓 type=title；dry-run 也抓到並修掉 slug 截斷後尾端底線的 branch 命名問題。",
+          "evidence": [
+            {
+              "type": "tool",
+              "ref": "mcp__codex_apps__notion._fetch collection://f16a2bd0-b855-4da9-8d68-273003c1ba11",
+              "result": "確認 Sprint Backlog schema 仍有 Card Type、GitHub Repo、GitHub Branch、Task ID、Parent item、Sub-item、任務狀態，且 title 欄位為展廳。"
+            },
+            {
+              "type": "tool",
+              "ref": "mcp__codex_apps__notion._fetch collection://43a7a9ab-12f8-440f-8b79-fd8df7ac3e67",
+              "result": "確認 Review Issue 有 Affected Repo Execution、Resolved Repo Execution、Repair Routing Summary、Repair PR URLs、Last Repair Sync At、Reopen Count。"
+            },
+            {
+              "type": "tool",
+              "ref": "mcp__codex_apps__notion._fetch on ISS-192, SB-2176, SB-2127, SB-2103",
+              "result": "確認真實 Review Issue 可透過 Sprint Backlog relation resolve 到 officialwebsite Repo Execution；Feature Hub child repo execution 可往上取得 parent SB。"
+            },
+            {
+              "type": "command",
+              "ref": "node dry-run with live Notion representative fields",
+              "result": "驗證 ISS-192 -> officialwebsite、Feature Hub child -> feat/SB-2127_e2e_t2_auto_branch_test_child、Repair PR URL 去重、通知人員去重。"
+            },
+            {
+              "type": "command",
+              "ref": "ruby YAML.load_file + node --check + rg old secrets",
+              "result": "github-docs reusable workflows 與五個 caller repo workflow 均通過 YAML 解析；內嵌 github-script 通過語法檢查；caller workflows 無 ANTHROPIC_API_KEY / FIX_TASK_DB_ID。"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "blocked": [],
+  "blockers": [],
+  "decisions": [
+    {
+      "title": "Fix Task 自主流程移除",
+      "status": "approved"
+    },
+    {
+      "title": "Review Issue reopen 後重新 reroute impacted repos",
+      "status": "approved"
+    },
+    {
+      "title": "通知第一版只用 Notion comment / mention",
+      "status": "approved"
+    }
+  ],
+  "next_actions": [
+    "重新產生 progress.html",
+    "分 repo commit workflow / docs / skill 更新，不納入既有 unrelated dirty files",
+    "把 github-docs 推到 main，caller repos 推到各自 default/deploy branch"
+  ],
+  "not_covered": [
+    {
+      "item": "org-level GitHub Actions secrets visibility",
+      "reason": "目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。"
+    }
+  ]
+}

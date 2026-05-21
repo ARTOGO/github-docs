@@ -1,6 +1,8 @@
 # AI 開發流程模板
 
-> 本模板由 notion-create-branch-reusable workflow 在產生 AI Dev Prompt 時嵌入。
+> 舊模型備註：這份模板曾由 `notion-create-branch-reusable` 在產生 `AI Dev Prompt` 時嵌入。
+>
+> 自 `2026-05-21` 起，live workflow 已移除 `AI Dev Prompt` 主流程，這份檔案目前僅保留作為歷史參考，不再被 workflow 使用。
 > 請依照以下流程執行開發任務。每個階段必須 review 通過後才能進入下一階段，沒有 conditional pass。
 > 本模板適用於所有 AI Coding Agent（Claude Code、Codex、Gemini CLI、Cursor、Aider、Windsurf 等）。
 

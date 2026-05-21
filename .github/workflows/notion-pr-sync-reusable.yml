@@ -1,4 +1,4 @@
-name: GitHub PR → Notion Sync (Reusable)
+name: GitHub PR -> Notion Sync (Reusable)
 
 on:
   workflow_call:
@@ -52,8 +52,6 @@ on:
         required: true
       NOTION_DATABASE_ID:
         required: true
-      FIX_TASK_DB_ID:
-        required: false
       REVIEW_ISSUE_DB_ID:
         required: false
 
@@ -77,18 +75,17 @@ jobs:
             echo "task_id=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
             echo "task_num=$(echo ${BASH_REMATCH[1]} | sed 's/SB-//')" >> $GITHUB_OUTPUT
             echo "Found Sprint Task: ${BASH_REMATCH[1]}"
-          elif [[ $BRANCH =~ (FIX-[0-9]+) ]]; then
-            echo "task_type=fix" >> $GITHUB_OUTPUT
+          elif [[ $BRANCH =~ (ISS-[0-9]+) ]]; then
+            echo "task_type=review_issue" >> $GITHUB_OUTPUT
             echo "task_id=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
-            echo "task_num=$(echo ${BASH_REMATCH[1]} | sed 's/FIX-//')" >> $GITHUB_OUTPUT
-            echo "Found Fix Task: ${BASH_REMATCH[1]}"
+            echo "task_num=$(echo ${BASH_REMATCH[1]} | sed 's/ISS-//')" >> $GITHUB_OUTPUT
+            echo "Found Review Issue: ${BASH_REMATCH[1]}"
           else
             echo "No Task ID found in branch name"
             echo "task_type=" >> $GITHUB_OUTPUT
             echo "task_id=" >> $GITHUB_OUTPUT
           fi
 
-      # === Sprint Backlog (SB-) PR Sync ===
       - name: Sync Sprint Backlog task
         if: steps.extract.outputs.task_type == 'sprint'
         uses: actions/github-script@v7
@@ -126,7 +123,6 @@ jobs:
             const stagingBranches = (process.env.STAGING_REVIEW_BRANCHES || 'staging').split(',').map(b => b.trim());
             const prodBranches = (process.env.PROD_REVIEW_BRANCHES || 'main,master').split(',').map(b => b.trim());
 
-            // --- Notion API helper (with retry) ---
             async function notion(endpoint, method = 'GET', body = null) {
               const opts = {
                 method,
@@ -157,16 +153,25 @@ jobs:
                 richText.push({ type: 'mention', mention: { type: 'user', user: { id: users[i].id } } });
                 if (i < users.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
               }
-              richText.push({ type: 'text', text: { content: ` ${message}\n` } });
+              richText.push({ type: 'text', text: { content: `${users.length ? ' ' : ''}${message}\n` } });
               if (linkUrl) {
                 richText.push({ type: 'text', text: { content: linkUrl, link: { url: linkUrl } } });
               }
               await notion('/comments', 'POST', { parent: { page_id: pageId }, rich_text: richText });
             }
 
+            function getPageTitle(page, fallback = 'untitled') {
+              for (const prop of Object.values(page.properties || {})) {
+                if (prop?.type === 'title') {
+                  const title = (prop.title || []).map(t => t.plain_text || '').join('').trim();
+                  if (title) return title;
+                }
+              }
+              return fallback;
+            }
+
             console.log(`Event: ${eventName}, Action: ${prAction}, Review State: ${reviewState}, Merged: ${prMerged}`);
 
-            // 1. Find page
             const queryRes = await notion(`/databases/${databaseId}/query`, 'POST', {
               filter: { property: 'Task ID', unique_id: { equals: taskNum } }
             });
@@ -179,12 +184,10 @@ jobs:
 
             let page = data.results[0];
             let pageId = page.id;
-            const currentStatusRaw = page.properties['任務狀態']?.status?.name;
             const cardType = page.properties['Card Type']?.select?.name;
             let featureHubPage = null;
-            console.log(`Found: ${pageId}, Status: ${currentStatusRaw}, Card Type: ${cardType}`);
+            console.log(`Found: ${pageId}, Card Type: ${cardType}`);
 
-            // Handle Feature Hub → find child Repo Execution for this repo
             if (cardType === 'Feature Hub') {
               featureHubPage = page;
               const repoName = context.repo.repo;
@@ -196,34 +199,30 @@ jobs:
                 const subPage = await subRes.json();
                 const subCardType = subPage.properties?.['Card Type']?.select?.name;
                 const subRepo = subPage.properties?.['GitHub Repo']?.select?.name;
-
                 if (subCardType === 'Repo Execution' && subRepo === repoName) {
-                  // Match by GitHub Branch to handle multiple Repo Execution cards for the same repo
                   const subBranch = subPage.properties?.['GitHub Branch']?.rich_text?.[0]?.plain_text || '';
                   if (subBranch && subBranch !== headBranch) {
-                    console.log(`  Skipping ${subRef.id}: branch "${subBranch}" ≠ "${headBranch}"`);
+                    console.log(`  Skipping ${subRef.id}: branch "${subBranch}" != "${headBranch}"`);
                     continue;
                   }
                   page = subPage;
                   pageId = subPage.id;
                   found = true;
-                  console.log(`Feature Hub → found child Repo Execution for ${repoName}: ${pageId}`);
+                  console.log(`Feature Hub -> child Repo Execution for ${repoName}: ${pageId}`);
                   break;
                 }
               }
 
               if (!found) {
-                console.warn(`⚠️ Feature Hub ${pageId} has no child Repo Execution for repo "${repoName}" — PR sync skipped. Check Sub-item relations.`);
+                console.warn(`Feature Hub ${page.id} has no child Repo Execution for repo "${repoName}"`);
                 return;
               }
             } else if (cardType !== 'Repo Execution') {
-              console.log(`Skipping: Card Type "${cardType || 'empty'}" is not Repo Execution or Feature Hub`);
+              console.log(`Skipping Card Type "${cardType || 'empty'}"`);
               return;
             }
 
             const currentStatus = page.properties['任務狀態']?.status?.name;
-
-            // 2. People (inherit from Feature Hub if child has none)
             let techReviewers = page.properties['Tech Reviewer']?.people || [];
             let funcReviewers = page.properties['Func. Reviewer']?.people || [];
             const developers = page.properties['Developer']?.people || [];
@@ -232,58 +231,52 @@ jobs:
             if (featureHubPage) {
               if (funcReviewers.length === 0) {
                 funcReviewers = featureHubPage.properties['Func. Reviewer']?.people || [];
-                if (funcReviewers.length > 0) console.log(`Inherited Func. Reviewer from Feature Hub`);
               }
               if (techReviewers.length === 0) {
                 techReviewers = featureHubPage.properties['Tech Reviewer']?.people || [];
-                if (techReviewers.length > 0) console.log(`Inherited Tech Reviewer from Feature Hub`);
               }
             }
 
-            // 3. Determine action
+            const noBackwardStatuses = ['STAGING FUNC REVIEW', 'PROD FUNCTION REVIEW', 'DONE', 'ABANDONED', 'DEPLOY PENDING', 'PHASED DONE'];
+
             let newStatus = null;
             let prStatus = null;
             let notifyUsers = [];
             let notifyMessage = '';
 
-            // 防止狀態倒退的共用清單
-            const noBackwardStatuses = ['STAGING FUNC REVIEW', 'PROD FUNCTION REVIEW', 'DONE', 'ABANDONED', 'DEPLOY PENDING', 'PHASED DONE'];
-
             if (eventName === 'pull_request_review') {
               if (reviewAuthorId && prAuthorId && reviewAuthorId === prAuthorId) {
-                console.log('⏭️ Review author = PR author, skipping');
+                console.log('Review author = PR author, skipping');
                 return;
               }
+
               if (reviewState === 'changes_requested' || reviewState === 'commented') {
-                if (noBackwardStatuses.includes(currentStatus)) {
-                  console.log(`Status ${currentStatus} is beyond TECH REVIEW, only notifying`);
-                } else {
+                if (!noBackwardStatuses.includes(currentStatus)) {
                   newStatus = 'DEV IN PROGRESS';
                 }
                 notifyUsers = developers.length > 0 ? developers : assignees;
-                const reason = reviewState === 'changes_requested' ? 'Tech Review 未通過' : 'Tech Reviewer 有留言需要回應';
-                notifyMessage = `${reason}，請查看 PR 並進行處理，完成後請點擊 "Re-request review"`;
+                notifyMessage = reviewState === 'changes_requested'
+                  ? 'Tech Review 未通過，請查看 PR 並進行處理，完成後請點擊 "Re-request review"'
+                  : 'Tech Reviewer 有留言需要回應，請查看 PR 並進行處理，完成後請點擊 "Re-request review"';
               } else if (reviewState === 'approved') {
-                console.log('Approved — waiting for merge');
+                console.log('Approved -> waiting for merge');
                 return;
               }
             } else if (eventName === 'pull_request') {
               if (prAction === 'opened' || prAction === 'reopened') {
                 prStatus = 'Open';
-                if (noBackwardStatuses.includes(currentStatus)) {
-                  console.log(`Status ${currentStatus} is beyond TECH REVIEW, only notifying`);
-                } else {
+                if (!noBackwardStatuses.includes(currentStatus)) {
                   newStatus = 'TECH REVIEW';
                 }
-                notifyUsers = techReviewers;
+                notifyUsers = techReviewers.length > 0 ? techReviewers : assignees;
                 notifyMessage = '收到新的 PR，請進行 Code Review';
               } else if (prAction === 'review_requested') {
                 if (currentStatus === 'DEV IN PROGRESS') {
                   newStatus = 'TECH REVIEW';
-                  notifyUsers = techReviewers;
+                  notifyUsers = techReviewers.length > 0 ? techReviewers : assignees;
                   notifyMessage = '開發者已修改完成，請再次進行 Code Review';
                 } else {
-                  console.log('Re-request but status ≠ DEV IN PROGRESS, skipping');
+                  console.log('Re-request but status != DEV IN PROGRESS, skipping');
                   return;
                 }
               } else if (prAction === 'closed') {
@@ -298,20 +291,17 @@ jobs:
                     notifyUsers = funcReviewers;
                     notifyMessage = `PR 已合併到 ${baseBranch}，請進行 Production 功能驗證`;
                   } else {
-                    console.log(`Merged to ${baseBranch} — only updating PR status`);
+                    console.log(`Merged to ${baseBranch}, only update PR status`);
                   }
                 } else {
                   prStatus = 'Closed';
                   if (!noBackwardStatuses.includes(currentStatus)) {
                     newStatus = 'DEV IN PROGRESS';
-                  } else {
-                    console.log(`Status ${currentStatus} is beyond TECH REVIEW, only updating PR status`);
                   }
                 }
               }
             }
 
-            // 4. Update
             const updateProps = {};
             if (prAction === 'opened' || prAction === 'reopened' || prAction === 'closed') {
               updateProps['GitHub PR'] = { url: prUrl };
@@ -321,20 +311,17 @@ jobs:
 
             if (Object.keys(updateProps).length > 0) {
               const res = await notion(`/pages/${pageId}`, 'PATCH', { properties: updateProps });
-              if (res.ok) console.log(`Updated: Status=${newStatus}, PR Status=${prStatus}`);
-              else console.error('Update failed:', await res.json());
+              if (!res.ok) {
+                console.error('Update failed:', await res.json());
+              }
             }
 
-            // 5. Notify
-            if (notifyUsers.length > 0 && notifyMessage) {
+            if (notifyMessage) {
               await addComment(pageId, notifyUsers, notifyMessage, prUrl);
-              console.log(`Notified: ${notifyUsers.map(u => u.name || u.id).join(', ')}`);
             }
 
-            // 6. Feature Hub status rollup
             const rollupStatuses = ['STAGING FUNC REVIEW', 'PROD FUNCTION REVIEW', 'DONE'];
             if (newStatus && rollupStatuses.includes(newStatus)) {
-              // Find parent Feature Hub (either we already have it, or check Parent item)
               let hubPage = featureHubPage;
               if (!hubPage) {
                 const parentRel = page.properties['Parent item']?.relation || [];
@@ -350,35 +337,40 @@ jobs:
               }
 
               if (hubPage) {
-                console.log(`Checking Feature Hub rollup for: ${hubPage.id}`);
                 const allChildren = hubPage.properties?.['Sub-item']?.relation || [];
                 const statusRank = {
-                  'NOT STARTED': 0, 'PENDING': 1, 'UI DESIGN': 2,
-                  'IN PROGRESS': 3, 'DEV IN PROGRESS': 3,
-                  'TECH REVIEW': 4, 'FUNC REVIEW FAILED': 3,
-                  'STAGING FUNC REVIEW': 6, 'PROD FUNCTION REVIEW': 7,
-                  'DEPLOY PENDING': 8, 'PHASED DONE': 9, 'DONE': 10,
+                  'NOT STARTED': 0,
+                  'PENDING': 1,
+                  'UI DESIGN': 2,
+                  'IN PROGRESS': 3,
+                  'DEV IN PROGRESS': 3,
+                  'TECH REVIEW': 4,
+                  'FUNC REVIEW FAILED': 3,
+                  'STAGING FUNC REVIEW': 6,
+                  'PROD FUNCTION REVIEW': 7,
+                  'DEPLOY PENDING': 8,
+                  'PHASED DONE': 9,
+                  'DONE': 10,
                   'ABANDONED': 10
                 };
                 const targetRank = statusRank[newStatus] || 0;
 
                 let allAtOrBeyond = true;
                 for (const childRef of allChildren) {
-                  let childStatus, childRank;
+                  let childRank;
+                  let childStatus;
                   if (childRef.id === pageId) {
-                    // Use known newStatus for self (avoid re-fetch eventual consistency issue)
                     childStatus = newStatus;
                     childRank = targetRank;
                   } else {
                     const childRes = await notion(`/pages/${childRef.id}`);
                     if (!childRes.ok) continue;
                     const childPage = await childRes.json();
-                    const childCardType = childPage.properties?.['Card Type']?.select?.name;
-                    if (childCardType !== 'Repo Execution') continue;
+                    if (childPage.properties?.['Card Type']?.select?.name !== 'Repo Execution') continue;
                     childStatus = childPage.properties?.['任務狀態']?.status?.name;
                     childRank = statusRank[childStatus] || 0;
                   }
-                  console.log(`  Sibling ${childRef.id}: ${childStatus} (rank ${childRank})`);
+                  console.log(`Sibling ${childRef.id}: ${childStatus} (${childRank})`);
                   if (childRank < targetRank) {
                     allAtOrBeyond = false;
                     break;
@@ -386,41 +378,34 @@ jobs:
                 }
 
                 if (allAtOrBeyond) {
-                  console.log(`All children at ${newStatus} or beyond → updating Feature Hub`);
                   const hubUpdateRes = await notion(`/pages/${hubPage.id}`, 'PATCH', {
                     properties: { '任務狀態': { status: { name: newStatus } } }
                   });
                   if (hubUpdateRes.ok) {
-                    console.log(`Feature Hub updated to ${newStatus}`);
-                    // Notify Func. Reviewer on Feature Hub if entering FUNC REVIEW stage
                     const hubFuncReviewers = hubPage.properties?.['Func. Reviewer']?.people || [];
                     if (hubFuncReviewers.length > 0 && (newStatus === 'STAGING FUNC REVIEW' || newStatus === 'PROD FUNCTION REVIEW')) {
-                      const hubTitle = hubPage.properties['項目']?.title?.[0]?.plain_text || 'untitled';
+                      const hubTitle = getPageTitle(hubPage);
                       const stage = newStatus === 'STAGING FUNC REVIEW' ? 'Staging' : 'Production';
-                      await addComment(hubPage.id, hubFuncReviewers,
-                        `Feature Hub「${hubTitle}」所有 Repo 已合併，請進行 ${stage} 功能驗證`, null);
-                      console.log(`Notified Feature Hub Func. Reviewer`);
+                      await addComment(hubPage.id, hubFuncReviewers, `Feature Hub「${hubTitle}」所有 Repo 已合併，請進行 ${stage} 功能驗證`, null);
                     }
                   }
-                } else {
-                  console.log(`Not all children at ${newStatus} yet, Feature Hub stays`);
                 }
               }
             }
 
-      # === Fix Task (FIX-) PR Sync ===
-      - name: Sync Fix Task
-        if: steps.extract.outputs.task_type == 'fix'
+      - name: Sync Review Issue repair PR
+        if: steps.extract.outputs.task_type == 'review_issue'
         uses: actions/github-script@v7
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
-          FIX_TASK_DB_ID: ${{ secrets.FIX_TASK_DB_ID }}
           REVIEW_ISSUE_DB_ID: ${{ secrets.REVIEW_ISSUE_DB_ID }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
           TASK_ID: ${{ steps.extract.outputs.task_id }}
           TASK_NUM: ${{ steps.extract.outputs.task_num }}
           PR_URL: ${{ inputs.pr_url }}
           PR_ACTION: ${{ inputs.pr_action }}
           PR_MERGED: ${{ inputs.pr_merged }}
+          HEAD_BRANCH: ${{ inputs.head_branch }}
           BASE_BRANCH: ${{ inputs.base_branch }}
           EVENT_NAME: ${{ inputs.event_name }}
           REVIEW_STATE: ${{ inputs.review_state }}
@@ -429,25 +414,26 @@ jobs:
         with:
           script: |
             const notionKey = process.env.NOTION_API_KEY;
-            const fixTaskDbId = process.env.FIX_TASK_DB_ID;
             const reviewIssueDbId = process.env.REVIEW_ISSUE_DB_ID;
-            const taskId = process.env.TASK_ID;
-            const taskNum = parseInt(process.env.TASK_NUM);
+            const sprintDbId = process.env.NOTION_DATABASE_ID;
+            const issueId = process.env.TASK_ID;
+            const issueNum = parseInt(process.env.TASK_NUM);
             const prUrl = process.env.PR_URL;
             const prAction = process.env.PR_ACTION;
             const prMerged = process.env.PR_MERGED === 'true';
+            const headBranch = process.env.HEAD_BRANCH || '';
             const baseBranch = process.env.BASE_BRANCH || '';
             const eventName = process.env.EVENT_NAME;
             const reviewState = process.env.REVIEW_STATE;
             const reviewAuthorId = process.env.REVIEW_AUTHOR_ID;
             const prAuthorId = process.env.PR_AUTHOR_ID;
+            const repoName = context.repo.repo;
 
-            if (!fixTaskDbId) {
-              console.log('FIX_TASK_DB_ID not set, skipping Fix Task sync');
+            if (!reviewIssueDbId) {
+              console.log('REVIEW_ISSUE_DB_ID not set, skipping Review Issue sync');
               return;
             }
 
-            // --- Notion API helper (with retry) ---
             async function notion(endpoint, method = 'GET', body = null) {
               const opts = {
                 method,
@@ -472,189 +458,254 @@ jobs:
               return { ok: false, json: async () => ({ message: 'max retries exceeded' }) };
             }
 
-            async function addComment(pageId, users, message, linkUrl) {
+            async function queryAllPages(dbId, filter = null) {
+              const allResults = [];
+              let startCursor = undefined;
+              do {
+                const body = {};
+                if (filter) body.filter = filter;
+                if (startCursor) body.start_cursor = startCursor;
+                const res = await notion(`/databases/${dbId}/query`, 'POST', body);
+                if (!res.ok) {
+                  console.error(`Query failed:`, await res.json());
+                  break;
+                }
+                const data = await res.json();
+                allResults.push(...(data.results || []));
+                startCursor = data.has_more ? data.next_cursor : undefined;
+              } while (startCursor);
+              return allResults;
+            }
+
+            async function addComment(pageId, users, message, linkUrl = null) {
               const richText = [];
               for (let i = 0; i < users.length; i++) {
                 richText.push({ type: 'mention', mention: { type: 'user', user: { id: users[i].id } } });
                 if (i < users.length - 1) richText.push({ type: 'text', text: { content: ' ' } });
               }
-              richText.push({ type: 'text', text: { content: ` ${message}\n` } });
+              richText.push({ type: 'text', text: { content: `${users.length ? ' ' : ''}${message}\n` } });
               if (linkUrl) {
                 richText.push({ type: 'text', text: { content: linkUrl, link: { url: linkUrl } } });
               }
               await notion('/comments', 'POST', { parent: { page_id: pageId }, rich_text: richText });
             }
 
-            console.log(`[Fix Task] Event: ${eventName}, Action: ${prAction}, Merged: ${prMerged}`);
-
-            // 1. Find Fix Task by ID
-            const queryRes = await notion(`/databases/${fixTaskDbId}/query`, 'POST', {
-              filter: { property: 'Fix Task ID', unique_id: { equals: taskNum } }
-            });
-            const data = await queryRes.json();
-
-            if (!data.results?.length) {
-              console.log(`No Fix Task found for ${taskId}`);
-              return;
+            function findUniqueIdMatch(page, prefix, number) {
+              for (const prop of Object.values(page.properties || {})) {
+                const uid = prop?.unique_id;
+                if (uid?.prefix === prefix && uid?.number === number) return true;
+              }
+              return false;
             }
 
-            const fixTask = data.results[0];
-            const fixTaskPageId = fixTask.id;
-            const currentStatus = fixTask.properties['狀態']?.status?.name;
-            const fixers = fixTask.properties['修復者']?.people || [];
-            console.log(`Found Fix Task: ${fixTaskPageId}, Status: ${currentStatus}`);
+            function hasProp(page, propName) {
+              return Boolean(page.properties && Object.prototype.hasOwnProperty.call(page.properties, propName));
+            }
 
-            // 2a. Get Tech Reviewer from related Repo Execution card
-            let techReviewers = [];
-            const repoExecRelation = fixTask.properties['Repo Execution']?.relation || [];
-            if (repoExecRelation.length > 0) {
-              const reRes = await notion(`/pages/${repoExecRelation[0].id}`);
-              if (reRes.ok) {
-                const rePage = await reRes.json();
-                techReviewers = rePage.properties?.['Tech Reviewer']?.people || [];
-                if (techReviewers.length === 0) {
-                  // Fallback: check Feature Hub parent for Tech Reviewer
-                  const parentRel = rePage.properties?.['Parent item']?.relation || [];
-                  if (parentRel.length > 0) {
-                    const parentRes = await notion(`/pages/${parentRel[0].id}`);
-                    if (parentRes.ok) {
-                      const parentPage = await parentRes.json();
-                      if (parentPage.properties?.['Card Type']?.select?.name === 'Feature Hub') {
-                        techReviewers = parentPage.properties?.['Tech Reviewer']?.people || [];
-                        if (techReviewers.length > 0) console.log(`Inherited Tech Reviewer from Feature Hub`);
-                      }
+            function getRichTextPlain(page, propName) {
+              return (page.properties?.[propName]?.rich_text || []).map(t => t.plain_text || '').join('');
+            }
+
+            function appendUniqueLine(existing, line) {
+              const lines = existing
+                .split('\n')
+                .map(x => x.trim())
+                .filter(Boolean);
+              if (!lines.includes(line)) lines.push(line);
+              return lines.join('\n').slice(-1900);
+            }
+
+            function uniquePeople(users) {
+              const seen = new Set();
+              return users.filter(user => {
+                if (!user?.id || seen.has(user.id)) return false;
+                seen.add(user.id);
+                return true;
+              });
+            }
+
+            async function resolveRepoExecutionContext(reviewIssuePage) {
+              const affected = reviewIssuePage.properties?.['Affected Repo Execution']?.relation || [];
+              for (const ref of affected) {
+                const res = await notion(`/pages/${ref.id}`);
+                if (!res.ok) continue;
+                const page = await res.json();
+                const repo = page.properties?.['GitHub Repo']?.select?.name;
+                if (repo === repoName) {
+                  return page;
+                }
+              }
+
+              const sprintRefs = reviewIssuePage.properties?.['Sprint Backlog']?.relation || [];
+              for (const ref of sprintRefs) {
+                const res = await notion(`/pages/${ref.id}`);
+                if (!res.ok) continue;
+                const page = await res.json();
+                const cardType = page.properties?.['Card Type']?.select?.name;
+                if (cardType === 'Repo Execution' && page.properties?.['GitHub Repo']?.select?.name === repoName) {
+                  return page;
+                }
+                if (cardType === 'Feature Hub') {
+                  const subItems = page.properties?.['Sub-item']?.relation || [];
+                  for (const subRef of subItems) {
+                    const subRes = await notion(`/pages/${subRef.id}`);
+                    if (!subRes.ok) continue;
+                    const subPage = await subRes.json();
+                    if (subPage.properties?.['Card Type']?.select?.name !== 'Repo Execution') continue;
+                    if (subPage.properties?.['GitHub Repo']?.select?.name === repoName) {
+                      return subPage;
                     }
                   }
                 }
-                if (techReviewers.length > 0) console.log(`Tech Reviewer: ${techReviewers.map(u => u.name || u.id).join(', ')}`);
               }
+
+              return null;
             }
 
-            // 2b. Determine action
-            let newStatus = null;
-            let fixPrStatus = null;
+            async function resolveFeatureHubPage(repoExecutionPage) {
+              if (!repoExecutionPage) return null;
+              const parentRel = repoExecutionPage.properties?.['Parent item']?.relation || [];
+              if (!parentRel.length) return null;
+              const res = await notion(`/pages/${parentRel[0].id}`);
+              if (!res.ok) return null;
+              const page = await res.json();
+              return page.properties?.['Card Type']?.select?.name === 'Feature Hub' ? page : null;
+            }
+
+            const allIssues = await queryAllPages(reviewIssueDbId);
+            const reviewIssue = allIssues.find(page => findUniqueIdMatch(page, 'ISS', issueNum));
+            if (!reviewIssue) {
+              console.log(`No Review Issue found for ${issueId}`);
+              return;
+            }
+
+            const reviewIssuePageId = reviewIssue.id;
+            const currentStatus = reviewIssue.properties?.['狀態']?.status?.name || '';
+            const issueFixers = reviewIssue.properties?.['修復者']?.people || [];
+            const repoExecutionPage = await resolveRepoExecutionContext(reviewIssue);
+            const featureHubPage = await resolveFeatureHubPage(repoExecutionPage);
+
+            const developers = repoExecutionPage?.properties?.['Developer']?.people || [];
+            const assignees = repoExecutionPage?.properties?.['指派給']?.people || [];
+            const techReviewers = uniquePeople([
+              ...(repoExecutionPage?.properties?.['Tech Reviewer']?.people || []),
+              ...(featureHubPage?.properties?.['Tech Reviewer']?.people || [])
+            ]);
+            const funcReviewers = uniquePeople([
+              ...(repoExecutionPage?.properties?.['Func. Reviewer']?.people || []),
+              ...(featureHubPage?.properties?.['Func. Reviewer']?.people || [])
+            ]);
+
             let notifyUsers = [];
             let notifyMessage = '';
+            let newStatus = null;
+            const updateProps = {};
+            const nowIso = new Date().toISOString();
+
+            console.log(`[Review Issue] Event: ${eventName}, Action: ${prAction}, Review State: ${reviewState}, Repo: ${repoName}`);
 
             if (eventName === 'pull_request_review') {
               if (reviewAuthorId && prAuthorId && reviewAuthorId === prAuthorId) {
-                console.log('⏭️ Review author = PR author, skipping');
+                console.log('Review author = PR author, skipping');
                 return;
               }
               if (reviewState === 'changes_requested' || reviewState === 'commented') {
-                notifyUsers = fixers;
-                const reason = reviewState === 'changes_requested' ? 'Tech Review 未通過' : 'Reviewer 有留言需要回應';
-                notifyMessage = `${reason}，請查看 Fix PR 並進行處理`;
+                notifyUsers = developers.length > 0
+                  ? developers
+                  : (assignees.length > 0 ? assignees : issueFixers);
+                notifyMessage = reviewState === 'changes_requested'
+                  ? 'Repair PR 未通過，請查看 PR 並進行處理'
+                  : 'Repair PR 有留言需要回應，請查看 PR 並進行處理';
               } else if (reviewState === 'approved') {
-                console.log('Approved — waiting for merge');
+                console.log('Approved -> waiting for merge');
                 return;
               }
             } else if (eventName === 'pull_request') {
               if (prAction === 'opened' || prAction === 'reopened') {
-                fixPrStatus = 'Open';
-                notifyUsers = techReviewers;
-                notifyMessage = '收到新的 Fix PR，請進行 Code Review';
+                if (!['Verified', 'Fixed', "Won't Fix", 'Duplicate'].includes(currentStatus)) {
+                  newStatus = 'Fixing';
+                }
+                notifyUsers = techReviewers.length > 0
+                  ? techReviewers
+                  : (assignees.length > 0 ? assignees : []);
+                notifyMessage = '收到新的 Repair PR，請進行 Code Review';
               } else if (prAction === 'review_requested') {
-                notifyUsers = techReviewers;
+                if (!['Verified', 'Fixed', "Won't Fix", 'Duplicate'].includes(currentStatus)) {
+                  newStatus = 'Fixing';
+                }
+                notifyUsers = techReviewers.length > 0
+                  ? techReviewers
+                  : (assignees.length > 0 ? assignees : []);
                 notifyMessage = '修復者已修改完成，請再次進行 Code Review';
               } else if (prAction === 'closed') {
                 if (prMerged) {
-                  fixPrStatus = 'Merged';
-                  newStatus = 'Tech Fixed';
-                  notifyMessage = `Fix PR 已合併到 ${baseBranch}，修復完成`;
-                } else {
-                  fixPrStatus = 'Closed';
+                  if (hasProp(reviewIssue, 'Resolved Repo Execution') && repoExecutionPage) {
+                    const resolved = reviewIssue.properties['Resolved Repo Execution']?.relation || [];
+                    const resolvedIds = resolved.map(x => x.id);
+                    if (!resolvedIds.includes(repoExecutionPage.id)) resolvedIds.push(repoExecutionPage.id);
+                    updateProps['Resolved Repo Execution'] = {
+                      relation: resolvedIds.map(id => ({ id }))
+                    };
+                  }
                 }
               }
             }
 
-            // 3. Update Fix Task
-            const updateProps = {};
-            if (prAction === 'opened' || prAction === 'reopened' || prAction === 'closed') {
-              updateProps['Fix PR'] = { url: prUrl };
+            if (newStatus && hasProp(reviewIssue, '狀態')) {
+              updateProps['狀態'] = { status: { name: newStatus } };
             }
-            if (fixPrStatus) updateProps['Fix PR Status'] = { select: { name: fixPrStatus } };
-            if (newStatus) updateProps['狀態'] = { status: { name: newStatus } };
+            if (hasProp(reviewIssue, 'Last Repair Sync At')) {
+              updateProps['Last Repair Sync At'] = { date: { start: nowIso } };
+            }
+            if (hasProp(reviewIssue, 'Repair PR URLs')) {
+              const existing = getRichTextPlain(reviewIssue, 'Repair PR URLs');
+              const stateLabel = prMerged ? 'Merged' : (prAction === 'closed' ? 'Closed' : prAction);
+              const line = `[${repoName}] ${stateLabel}: ${prUrl}`;
+              updateProps['Repair PR URLs'] = {
+                rich_text: [{ text: { content: appendUniqueLine(existing, line) } }]
+              };
+            }
 
             if (Object.keys(updateProps).length > 0) {
-              const res = await notion(`/pages/${fixTaskPageId}`, 'PATCH', { properties: updateProps });
-              if (res.ok) console.log(`Updated Fix Task: Status=${newStatus}, PR Status=${fixPrStatus}`);
-              else console.error('Update failed:', await res.json());
+              const res = await notion(`/pages/${reviewIssuePageId}`, 'PATCH', { properties: updateProps });
+              if (!res.ok) {
+                console.error('Review Issue update failed:', await res.json());
+              }
             }
 
-            // 4. Notify on Fix Task page
-            if (notifyUsers.length > 0 && notifyMessage) {
-              await addComment(fixTaskPageId, notifyUsers, notifyMessage, prUrl);
-              console.log(`Notified fixers: ${notifyUsers.map(u => u.name || u.id).join(', ')}`);
+            if (notifyMessage) {
+              await addComment(reviewIssuePageId, notifyUsers, notifyMessage, prUrl);
             }
 
-            // 5. Check if all Fix Tasks for the Review Issue are Tech Fixed → auto-close Review Issue
-            if (newStatus === 'Tech Fixed' && reviewIssueDbId) {
-              const reviewIssueRelation = fixTask.properties['Review Issue']?.relation || [];
+            if (prMerged && hasProp(reviewIssue, 'Affected Repo Execution') && hasProp(reviewIssue, 'Resolved Repo Execution')) {
+              const refreshedRes = await notion(`/pages/${reviewIssuePageId}`);
+              if (!refreshedRes.ok) {
+                console.error('Failed to refetch Review Issue');
+                return;
+              }
+              const refreshed = await refreshedRes.json();
+              const affected = refreshed.properties?.['Affected Repo Execution']?.relation || [];
+              const resolved = refreshed.properties?.['Resolved Repo Execution']?.relation || [];
+              const affectedIds = affected.map(x => x.id);
+              const resolvedIds = new Set(resolved.map(x => x.id));
+              const allResolved = affectedIds.length > 0 && affectedIds.every(id => resolvedIds.has(id));
 
-              for (const riRef of reviewIssueRelation) {
-                console.log(`Checking Review Issue: ${riRef.id}`);
-
-                // Get the Review Issue to find all its Fix Tasks
-                const riPage = await (await notion(`/pages/${riRef.id}`)).json();
-                const allFixTaskRefs = riPage.properties?.['🔧 Fix Tasks']?.relation || [];
-
-                if (allFixTaskRefs.length === 0) continue;
-
-                // Check each Fix Task's status (skip self — we just set it to Tech Fixed)
-                let allDone = true;
-                for (const ftRef of allFixTaskRefs) {
-                  if (ftRef.id === fixTaskPageId) {
-                    console.log(`  Fix Task ${ftRef.id}: Tech Fixed (self)`);
-                    continue;
-                  }
-                  const ftPage = await (await notion(`/pages/${ftRef.id}`)).json();
-                  const ftStatus = ftPage.properties?.['狀態']?.status?.name;
-                  console.log(`  Fix Task ${ftRef.id}: ${ftStatus}`);
-                  if (ftStatus !== 'Tech Fixed') {
-                    allDone = false;
-                    break;
+              if (allResolved) {
+                const completionProps = {};
+                if (hasProp(refreshed, '狀態')) {
+                  completionProps['狀態'] = { status: { name: 'Tech Fixed' } };
+                }
+                if (hasProp(refreshed, 'Last Repair Sync At')) {
+                  completionProps['Last Repair Sync At'] = { date: { start: nowIso } };
+                }
+                if (Object.keys(completionProps).length > 0) {
+                  const completeRes = await notion(`/pages/${reviewIssuePageId}`, 'PATCH', { properties: completionProps });
+                  if (!completeRes.ok) {
+                    console.error('Failed to mark Review Issue Tech Fixed:', await completeRes.json());
                   }
                 }
-
-                if (allDone) {
-                  console.log(`All Fix Tasks done → Review Issue → Tech Fixed`);
-                  await notion(`/pages/${riRef.id}`, 'PATCH', {
-                    properties: { '狀態': { status: { name: 'Tech Fixed' } } }
-                  });
-
-                  // Notify Func. Reviewer from Sprint Backlog relation
-                  const sprintBacklogRefs = riPage.properties?.['Sprint Backlog']?.relation || [];
-                  let funcReviewersToNotify = [];
-                  for (const sbRef of sprintBacklogRefs) {
-                    const sbRes = await notion(`/pages/${sbRef.id}`);
-                    if (!sbRes.ok) continue;
-                    const sbPage = await sbRes.json();
-                    const sbCardType = sbPage.properties?.['Card Type']?.select?.name;
-                    let fr = sbPage.properties?.['Func. Reviewer']?.people || [];
-                    // If Repo Execution has no Func. Reviewer, check Feature Hub parent
-                    if (fr.length === 0 && sbCardType === 'Repo Execution') {
-                      const parentRel = sbPage.properties?.['Parent item']?.relation || [];
-                      if (parentRel.length > 0) {
-                        const parentRes = await notion(`/pages/${parentRel[0].id}`);
-                        if (parentRes.ok) {
-                          const parentPage = await parentRes.json();
-                          if (parentPage.properties?.['Card Type']?.select?.name === 'Feature Hub') {
-                            fr = parentPage.properties?.['Func. Reviewer']?.people || [];
-                          }
-                        }
-                      }
-                    }
-                    for (const u of fr) {
-                      if (!funcReviewersToNotify.some(x => x.id === u.id)) funcReviewersToNotify.push(u);
-                    }
-                  }
-                  if (funcReviewersToNotify.length > 0) {
-                    await addComment(riRef.id, funcReviewersToNotify, '所有 Fix Task 已完成修復，請進行驗證', null);
-                    console.log(`Notified Func. Reviewer: ${funcReviewersToNotify.map(u => u.name || u.id).join(', ')}`);
-                  }
-                } else {
-                  console.log(`Not all Fix Tasks done yet, Review Issue stays as-is`);
+                if (funcReviewers.length > 0) {
+                  await addComment(reviewIssuePageId, funcReviewers, '所有受影響 Repo 已完成修復，請進行驗證', null);
                 }
               }
             }
