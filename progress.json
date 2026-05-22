@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-22T15:36:55+08:00",
+  "updated_at": "2026-05-22T18:56:24+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -12,8 +12,8 @@
   ],
   "current_focus": {
     "feature_id": "F2",
-    "task_id": "T2.9",
-    "summary": "已補測多數 GitHub Actions live flow；剩餘未測項目主要是需要第二個 GitHub reviewer 的 review event 與使用者端 AI skill 正式 code repair E2E。"
+    "task_id": "T2.10",
+    "summary": "已補測 review_requested、Notion mention、parent reviewer inheritance、ISS repair review commented 與 AI repair skill E2E；剩餘 GitHub review submitted 狀態等待 Zeal 在 PR #10 / #11 送出真人 review。"
   },
   "conversation_changes": [
     {
@@ -69,6 +69,12 @@
       "source": "tool",
       "change": "完成多數已實作 GitHub Actions live flow 補測，包含 staging/prod merge、rollup、cascade、repair closed-not-merged、terminal guard、多 repo completion、Sprint fallback 與 branch prefix。",
       "impact": "Notion Worker 前的主要 GitHub Actions 狀態機已以真實 Notion/GitHub side effect 驗證；剩餘 review event 需要第二個 GitHub reviewer，AI skill code repair E2E 仍未覆蓋。"
+    },
+    {
+      "at": "2026-05-22T18:13:23+08:00",
+      "source": "user",
+      "change": "要求所有已實作流程都進行 live 測，並允許真實 tag 同事來測 reviewer 事件。",
+      "impact": "將原本 blocked 的 GitHub review_requested / review submitted 類流程重新納入 live 測試範圍；Notion Worker 設定延後到這批可測流程全部補測完成後。"
     }
   ],
   "goal_groups": [
@@ -483,6 +489,59 @@
               "result": "tool-imagecompressor 與 mailtemplate 測試 PR 均已關閉或合併；測試 branches 已刪除；測試 Notion cards 已標示為 ABANDONED / Fixed / Won't Fix。"
             }
           ]
+        },
+        {
+          "id": "T2.10",
+          "title": "補測 reviewer event、Notion mention 與 AI repair skill E2E",
+          "status": "blocked",
+          "workstream": "Ops / Verification",
+          "progress_percent": 85,
+          "definition_of_done": [
+            "live 測 `SB-*` PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
+            "live 測 `ISS-*` repair PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
+            "live 測 branch / PR / cascade 的 Notion comment mention 寫入",
+            "以真實 Review Issue 跑一次使用者端 AI repair skill E2E，包含 repo 判斷、branch、修復、測試、PR 與 Notion 回寫",
+            "補測完成後更新測試狀態文件與 progress dashboard"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md",
+            "/Users/peterting/Documents/artogo/github-docs/progress.json",
+            "/Users/peterting/Documents/artogo/github-docs/progress.html"
+          ],
+          "notes": "已 request 並 tag `zeallin` 於 tool-imagecompressor PR #10 / #11。review_requested 與多數 mention 已 live 測；changes_requested / approved / SB commented 仍需非 PR author reviewer 送出 GitHub review，PR author 自測會被 workflow guard 跳過。",
+          "blocker": "等待 Zeal 在 PR #10 / #11 送出真人 GitHub review，才能驗證 SB-* commented / changes_requested / approved 與 ISS-* changes_requested / approved。",
+          "evidence": [
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor branch / PR sync runs 26282142330, 26282194741, 26282238457",
+              "result": "SB-2223 branch 建立後 Notion comment mention Zeal Lin；PR #10 opened 進 TECH REVIEW；review_requested 從 DEV IN PROGRESS 回 TECH REVIEW 並 mention reviewer。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor repair PR sync runs 26282312397, 26282354736",
+              "result": "ISS-200 / PR #11 opened 後狀態 Fixing 並 mention Zeal Lin；review_requested 維持 Fixing 並再次 mention reviewer。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor run 26282409153 and github-docs cascade run 26282501635",
+              "result": "SB-2223 單卡 FUNC REVIEW FAILED rollback 與 SB-2222 Feature Hub cascade 都回 DEV IN PROGRESS，並在 Notion child comment mention Zeal Lin。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor PR #13 and runs 26282892876, 26282931319, 26282986105",
+              "result": "SB-2224 無 child tech reviewer 時從 parent SB-2222 繼承 Zeal Lin，PR opened sync 成功 mention parent reviewer；closed-not-merged 後狀態回 DEV IN PROGRESS。"
+            },
+            {
+              "type": "github",
+              "ref": "tool-imagecompressor PR #10 / #11",
+              "result": "兩個 PR 目前 open 且 review request 指向 `zeallin`；已在 PR comment tag Zeal 說明依序送出 Comment、Request changes、Approve。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "ISS-201 with tool-imagecompressor PR #12 / #14 / #15 / #16 and runs 26282735804, 26282770577, 26282808528, 26283054976, 26283144472, 26283144522, 26283215554, 26283307702, 26283299721, 26283432982, 26283550987",
+              "result": "使用者端 AI repair skill E2E 完成：判斷只修 tool-imagecompressor，寫回 Affected / Resolved Repo Execution 與 Repair Routing Summary，建立 fix/ISS-201 branch，修 README，跑 prettier / diff check，PR merge 後 ISS-201 變 Tech Fixed；Gemini COMMENTED review path 也已由 PR #12/#14/#15 live 測。"
+            }
+          ]
         }
       ]
     }
@@ -504,10 +563,10 @@
     }
   ],
   "next_actions": [
-    "確認是否接受 review event 需要第二個 reviewer 因而暫列 blocked",
-    "若接受，下一步可開始 Notion Agent / Worker implementation 與 trigger 設定",
-    "若不接受，需安排第二個 GitHub reviewer 測 PR review_requested / review submitted 類流程",
-    "若不想保留 tool-imagecompressor 空 commit 測試 merge，可再用一個 revert/test-cleanup PR 處理，但目前檔案內容沒有變化"
+    "等待 Zeal 在 tool-imagecompressor PR #10 送出 SB-* Comment / Request changes / Approve review，確認 Notion 狀態與 comment 是否符合預期",
+    "等待 Zeal 在 tool-imagecompressor PR #11 送出 ISS-* Request changes / Approve review，確認 Notion 狀態與 comment 是否符合預期",
+    "Zeal review 補測完成後更新 docs/notion-automation-flow-test-status.md、progress.json、progress.html，並清理或關閉 PR #10 / #11",
+    "review submitted 類流程補測完成或保留明確 blocked reason 後，再開始 Notion Worker / Agent implementation 與 trigger 設定"
   ],
   "not_covered": [
     {
@@ -520,11 +579,7 @@
     },
     {
       "item": "GitHub review event live test",
-      "reason": "review_requested、approved、changes_requested、commented 需要非 PR author reviewer；本輪不 ping 真實同事，因此列為 blocked / not covered。"
-    },
-    {
-      "item": "使用者端 AI skill 正式 code repair E2E",
-      "reason": "本輪補測的是 workflow sync 與空 commit PR；尚未用真實 bug 進行 AI skill 判斷 repo、改 code、跑測試、開 repair PR 的完整流程。"
+      "reason": "review_requested 已 live 測；ISS-* repair PR commented 已由 Gemini `pull_request_review COMMENTED` live 測。SB-* commented / changes_requested / approved 與 ISS-* changes_requested / approved 仍等待 Zeal 在 PR #10 / #11 送出真人 review。"
     }
   ]
 }
