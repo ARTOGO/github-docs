@@ -10,6 +10,8 @@
 2. 測試通過後，把證據補回本文件與 `progress.json`。
 3. 只有在可測流程都測完後，才開始設定 Notion Worker / Notion Agent。
 
+圖像化 flow map：[docs/notion-automation-flow-map.md](./notion-automation-flow-map.md)。
+
 ## 狀態定義
 
 | 狀態 | 意義 |

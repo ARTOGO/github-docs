@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-22T18:56:24+08:00",
+  "updated_at": "2026-05-22T19:01:18+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -75,6 +75,12 @@
       "source": "user",
       "change": "要求所有已實作流程都進行 live 測，並允許真實 tag 同事來測 reviewer 事件。",
       "impact": "將原本 blocked 的 GitHub review_requested / review submitted 類流程重新納入 live 測試範圍；Notion Worker 設定延後到這批可測流程全部補測完成後。"
+    },
+    {
+      "at": "2026-05-22T19:01:18+08:00",
+      "source": "user",
+      "change": "要求完成後用圖像化方式呈現所有 flow，並標註目前完成/沒完成、已測/未測的項目。",
+      "impact": "新增獨立 Mermaid flow map 文件，讓 runtime ownership、Repo Execution、Review Issue repair、AI skill、Worker 目標流與 legacy 移除流都有視覺化狀態標註。"
     }
   ],
   "goal_groups": [
@@ -540,6 +546,40 @@
               "type": "github-actions",
               "ref": "ISS-201 with tool-imagecompressor PR #12 / #14 / #15 / #16 and runs 26282735804, 26282770577, 26282808528, 26283054976, 26283144472, 26283144522, 26283215554, 26283307702, 26283299721, 26283432982, 26283550987",
               "result": "使用者端 AI repair skill E2E 完成：判斷只修 tool-imagecompressor，寫回 Affected / Resolved Repo Execution 與 Repair Routing Summary，建立 fix/ISS-201 branch，修 README，跑 prettier / diff check，PR merge 後 ISS-201 變 Tech Fixed；Gemini COMMENTED review path 也已由 PR #12/#14/#15 live 測。"
+            }
+          ]
+        },
+        {
+          "id": "T2.11",
+          "title": "建立圖像化 flow map 與狀態矩陣",
+          "status": "verified",
+          "workstream": "Docs / QA Planning",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "用 Mermaid 呈現整體 runtime ownership",
+            "用 Mermaid 呈現 Repo Execution 開發 flow",
+            "用 Mermaid 呈現 Feature Hub rollup / cascade flow",
+            "用 Mermaid 呈現 Review Issue repair flow",
+            "用 Mermaid 呈現使用者端 AI repair skill flow",
+            "用 Mermaid 呈現 Notion Worker / Agent 未實作目標 flow",
+            "用狀態矩陣標註完成/沒完成、已測/未測/blocked"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-map.md",
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md",
+            "/Users/peterting/Documents/artogo/github-docs/progress.json",
+            "/Users/peterting/Documents/artogo/github-docs/progress.html"
+          ],
+          "evidence": [
+            {
+              "type": "file",
+              "ref": "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-map.md",
+              "result": "新增圖像化 flow map，包含 7 張 Mermaid 圖與狀態矩陣。"
+            },
+            {
+              "type": "command",
+              "ref": "rg / sed on docs/notion-automation-flow-test-status.md and docs/notion-automation-flow-map.md",
+              "result": "flow map 狀態與測試盤點表一致，並在測試盤點表加入 flow map 連結。"
             }
           ]
         }
