@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-21T20:05:00+08:00",
+  "updated_at": "2026-05-22T14:10:00+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -12,8 +12,8 @@
   ],
   "current_focus": {
     "feature_id": "F2",
-    "task_id": "T2.6",
-    "summary": "live Notion schema / representative pages 已完成讀取驗證，本地 dry-run 已通過，接著準備分 repo commit 並推到部署分支。"
+    "task_id": "T2.7",
+    "summary": "已完成真實 Notion + GitHub Actions live integration test；目前 Phase 1 live automation 仍由 GitHub Actions 執行，Notion Agent / Worker 尚未實作部署。"
   },
   "conversation_changes": [
     {
@@ -51,6 +51,12 @@
       "source": "user",
       "change": "要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。",
       "impact": "增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。"
+    },
+    {
+      "at": "2026-05-22T14:10:00+08:00",
+      "source": "user",
+      "change": "要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。",
+      "impact": "新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。"
     }
   ],
   "goal_groups": [
@@ -337,6 +343,57 @@
               "result": "github-docs reusable workflows 與五個 caller repo workflow 均通過 YAML 解析；內嵌 github-script 通過語法檢查；caller workflows 無 ANTHROPIC_API_KEY / FIX_TASK_DB_ID。"
             }
           ]
+        },
+        {
+          "id": "T2.7",
+          "title": "真實 Notion + GitHub Actions 完整流程測試",
+          "status": "verified",
+          "workstream": "Ops / Verification",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "建立明確標示測試用的 Sprint Backlog Repo Execution 卡",
+            "觸發 product repo branch workflow 並確認只處理測試卡",
+            "開啟與關閉 Sprint PR，確認 Notion PR 狀態回寫",
+            "建立 Review Issue 測試卡並設定 Affected Repo Execution",
+            "開啟與合併 ISS repair PR，確認 Review Issue 變 Tech Fixed"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/progress.json",
+            "/Users/peterting/Documents/artogo/github-docs/progress.html"
+          ],
+          "notes": "測試使用 tool-imagecompressor，Sprint 測試 branch 已清掉；repair PR 使用空 commit 並以 admin bypass 合併，沒有改動檔案內容，但 master 歷史新增一個測試 merge commit。",
+          "evidence": [
+            {
+              "type": "notion",
+              "ref": "Sprint Backlog SB-2213 https://www.notion.so/3685135e076e81f18cdfedec52d1eb0a",
+              "result": "建立 [TEST][Codex] Repo Execution；branch workflow 回寫 GitHub Branch=feat/SB-2213_test_codex_notion_live_automat；PR opened 回寫 PR Status=Open / TECH REVIEW；PR closed-not-merged 回寫 PR Status=Closed / DEV IN PROGRESS；測試完成後標 ABANDONED。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor Notion branch run 26271165149",
+              "result": "workflow_dispatch 成功，log 顯示 Found 1 tasks、Processing SB-2213、Branch created、Updated Notion。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor PR sync runs 26271213059 and 26271239716",
+              "result": "PR #2 opened/closed-not-merged 兩次 sync 都成功，Notion 欄位符合預期。"
+            },
+            {
+              "type": "notion",
+              "ref": "Review Issue ISS-195 https://www.notion.so/3685135e076e81f9ae70f7fa17b40c3b",
+              "result": "建立 [TEST][Codex] Review Issue；Affected Repo Execution 指向 SB-2213；repair PR opened 後狀態 Fixing 且寫入 Repair PR URLs；repair PR merged 後 Resolved Repo Execution 覆蓋 affected，狀態變 Tech Fixed。"
+            },
+            {
+              "type": "github",
+              "ref": "tool-imagecompressor PR #2 and PR #3",
+              "result": "PR #2 已 closed not merged；PR #3 已 merged，merge commit a42edd2。測試 branch 已清理。"
+            },
+            {
+              "type": "command",
+              "ref": "rg on docs/shared-skills/.github plus Notion page fetch",
+              "result": "確認 Notion Agent / Worker 目前沒有實作部署；正式 live automation 仍是 GitHub Actions，Agent / Worker 是後續 Phase 2+ 遷移方向。"
+            }
+          ]
         }
       ]
     }
@@ -358,14 +415,17 @@
     }
   ],
   "next_actions": [
-    "重新產生 progress.html",
-    "分 repo commit workflow / docs / skill 更新，不納入既有 unrelated dirty files",
-    "把 github-docs 推到 main，caller repos 推到各自 default/deploy branch"
+    "若要改成真正 Notion Agent / Worker 執行，需新增 Worker implementation 與 Notion trigger 設定",
+    "若不想保留 tool-imagecompressor 空 commit 測試 merge，可再用一個 revert/test-cleanup PR 處理，但目前檔案內容沒有變化"
   ],
   "not_covered": [
     {
       "item": "org-level GitHub Actions secrets visibility",
       "reason": "目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。"
+    },
+    {
+      "item": "Notion Agent / Worker runtime",
+      "reason": "本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。"
     }
   ]
 }
