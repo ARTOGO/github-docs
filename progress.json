@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-22T19:01:18+08:00",
+  "updated_at": "2026-05-22T22:22:50+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -13,7 +13,7 @@
   "current_focus": {
     "feature_id": "F2",
     "task_id": "T2.10",
-    "summary": "已補測 review_requested、Notion mention、parent reviewer inheritance、ISS repair review commented 與 AI repair skill E2E；剩餘 GitHub review submitted 狀態等待 Zeal 在 PR #10 / #11 送出真人 review。"
+    "summary": "已確認 Zeal 的 PR #10 COMMENTED 與 PR #11 APPROVED review event 都成功觸發 Notion sync；剩餘 SB changes_requested/approved 與 ISS changes_requested 等 Zeal 補送。"
   },
   "conversation_changes": [
     {
@@ -81,6 +81,12 @@
       "source": "user",
       "change": "要求完成後用圖像化方式呈現所有 flow，並標註目前完成/沒完成、已測/未測的項目。",
       "impact": "新增獨立 Mermaid flow map 文件，讓 runtime ownership、Repo Execution、Review Issue repair、AI skill、Worker 目標流與 legacy 移除流都有視覺化狀態標註。"
+    },
+    {
+      "at": "2026-05-22T22:22:50+08:00",
+      "source": "user",
+      "change": "Zeal 已送出部分 GitHub review，要求檢查結果。",
+      "impact": "確認 PR #10 COMMENTED 與 PR #11 APPROVED 兩條真人 review path 已觸發成功；更新測試狀態、flow map 與剩餘 blocked 項目。"
     }
   ],
   "goal_groups": [
@@ -501,7 +507,7 @@
           "title": "補測 reviewer event、Notion mention 與 AI repair skill E2E",
           "status": "blocked",
           "workstream": "Ops / Verification",
-          "progress_percent": 85,
+          "progress_percent": 92,
           "definition_of_done": [
             "live 測 `SB-*` PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
             "live 測 `ISS-*` repair PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
@@ -514,8 +520,8 @@
             "/Users/peterting/Documents/artogo/github-docs/progress.json",
             "/Users/peterting/Documents/artogo/github-docs/progress.html"
           ],
-          "notes": "已 request 並 tag `zeallin` 於 tool-imagecompressor PR #10 / #11。review_requested 與多數 mention 已 live 測；changes_requested / approved / SB commented 仍需非 PR author reviewer 送出 GitHub review，PR author 自測會被 workflow guard 跳過。",
-          "blocker": "等待 Zeal 在 PR #10 / #11 送出真人 GitHub review，才能驗證 SB-* commented / changes_requested / approved 與 ISS-* changes_requested / approved。",
+          "notes": "Zeal 已在 PR #10 送出 COMMENTED，並在 PR #11 送出 APPROVED；兩個 pull_request_review run 均成功，Notion 結果符合設計。已重新 request/tag Zeal 補送 PR #10 Request changes / Approve 與 PR #11 Request changes。",
+          "blocker": "等待 Zeal 在 PR #10 送出 SB-* changes_requested / approved，並在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。",
           "evidence": [
             {
               "type": "github-actions",
@@ -546,6 +552,21 @@
               "type": "github-actions",
               "ref": "ISS-201 with tool-imagecompressor PR #12 / #14 / #15 / #16 and runs 26282735804, 26282770577, 26282808528, 26283054976, 26283144472, 26283144522, 26283215554, 26283307702, 26283299721, 26283432982, 26283550987",
               "result": "使用者端 AI repair skill E2E 完成：判斷只修 tool-imagecompressor，寫回 Affected / Resolved Repo Execution 與 Repair Routing Summary，建立 fix/ISS-201 branch，修 README，跑 prettier / diff check，PR merge 後 ISS-201 變 Tech Fixed；Gemini COMMENTED review path 也已由 PR #12/#14/#15 live 測。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor PR #10 pull_request_review run 26292164189",
+              "result": "Zeal Lin `COMMENTED` review 觸發成功；log 顯示 review_state=commented，Notion `SB-2223` 變 `DEV IN PROGRESS`，並新增 mention comment：「Tech Reviewer 有留言需要回應」。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor PR #11 pull_request_review run 26292193861",
+              "result": "Zeal Lin `APPROVED` review 觸發成功；log 顯示 `Approved -> waiting for merge`，Notion `ISS-200` 維持 `Fixing` 且沒有新增 comment，符合 approved 不改狀態設計。"
+            },
+            {
+              "type": "github",
+              "ref": "tool-imagecompressor PR #10 comment 4519545792 and PR #11 comment 4519545774",
+              "result": "已重新 tag/request Zeal：PR #10 補 SB changes_requested / approved；PR #11 補 ISS changes_requested。"
             }
           ]
         },
@@ -603,8 +624,8 @@
     }
   ],
   "next_actions": [
-    "等待 Zeal 在 tool-imagecompressor PR #10 送出 SB-* Comment / Request changes / Approve review，確認 Notion 狀態與 comment 是否符合預期",
-    "等待 Zeal 在 tool-imagecompressor PR #11 送出 ISS-* Request changes / Approve review，確認 Notion 狀態與 comment 是否符合預期",
+    "等待 Zeal 在 tool-imagecompressor PR #10 送出 SB-* Request changes / Approve review，確認 Notion 狀態與 comment 是否符合預期",
+    "等待 Zeal 在 tool-imagecompressor PR #11 送出 ISS-* Request changes review，確認 Notion 狀態與 comment 是否符合預期",
     "Zeal review 補測完成後更新 docs/notion-automation-flow-test-status.md、progress.json、progress.html，並清理或關閉 PR #10 / #11",
     "review submitted 類流程補測完成或保留明確 blocked reason 後，再開始 Notion Worker / Agent implementation 與 trigger 設定"
   ],
@@ -619,7 +640,7 @@
     },
     {
       "item": "GitHub review event live test",
-      "reason": "review_requested 已 live 測；ISS-* repair PR commented 已由 Gemini `pull_request_review COMMENTED` live 測。SB-* commented / changes_requested / approved 與 ISS-* changes_requested / approved 仍等待 Zeal 在 PR #10 / #11 送出真人 review。"
+      "reason": "review_requested 已 live 測；SB-* commented 已由 Zeal `pull_request_review COMMENTED` live 測；ISS-* repair PR commented 已由 Gemini `pull_request_review COMMENTED` live 測；ISS-* approved 已由 Zeal `pull_request_review APPROVED` live 測。剩餘 SB-* changes_requested / approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。"
     }
   ]
 }

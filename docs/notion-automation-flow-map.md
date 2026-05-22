@@ -1,6 +1,6 @@
 # Notion 自動化 Flow Map
 
-最後更新：2026-05-22 19:01 Asia/Taipei
+最後更新：2026-05-22 22:22 Asia/Taipei
 
 這份文件用圖像化方式呈現目前 Notion / GitHub / AI repair 自動化流程，並標註每個節點的實作與測試狀態。
 
@@ -77,7 +77,7 @@ flowchart TD
   branch --> branchWrite["回寫 GitHub Branch<br/>comment mention Developer / Assignee<br/>已實作 + 已 live 測"]
   branch --> prOpen["SB-* PR opened / reopened<br/>PR Status=Open<br/>Repo Execution=TECH REVIEW<br/>已實作 + 已 live 測"]
   prOpen --> reviewReq["review_requested<br/>DEV IN PROGRESS -> TECH REVIEW<br/>已實作 + 已 live 測"]
-  prOpen --> reviewComment["review submitted: commented<br/>TECH REVIEW -> DEV IN PROGRESS<br/>已實作 + blocked"]
+  prOpen --> reviewComment["review submitted: commented<br/>TECH REVIEW -> DEV IN PROGRESS<br/>已實作 + 已 live 測"]
   prOpen --> reviewChange["review submitted: changes_requested<br/>TECH REVIEW -> DEV IN PROGRESS<br/>已實作 + blocked"]
   prOpen --> reviewApprove["review submitted: approved<br/>不改狀態，等待 merge<br/>已實作 + blocked"]
   prOpen --> closeNoMerge["PR closed but not merged<br/>PR Status=Closed<br/>Repo Execution=DEV IN PROGRESS<br/>已實作 + 已 live 測"]
@@ -91,11 +91,11 @@ flowchart TD
   classDef done fill:#dcfce7,stroke:#15803d,color:#14532d,stroke-width:2px
   classDef blocked fill:#ffedd5,stroke:#ea580c,color:#7c2d12,stroke-width:2px
 
-  class sb,branch,branchWrite,prOpen,reviewReq,closeNoMerge,mergeStaging,mergeProd,rollup,inherit,noBackward done
-  class reviewComment,reviewChange,reviewApprove blocked
+  class sb,branch,branchWrite,prOpen,reviewReq,reviewComment,closeNoMerge,mergeStaging,mergeProd,rollup,inherit,noBackward done
+  class reviewChange,reviewApprove blocked
 ```
 
-目前 blocked 的原因：PR #10 已 request 並 tag `zeallin`，但還沒有非 PR author 的 GitHub review。PR author 自己送 review 會被 workflow guard 跳過，不能用來驗證。
+目前 blocked 的原因：PR #10 已重新 request 並 tag `zeallin`，但還缺非 PR author 的 `changes_requested` 與 `approved` review。PR author 自己送 review 會被 workflow guard 跳過，不能用來驗證。
 
 ## 3. Feature Hub Rollup / Cascade Flow
 
@@ -131,7 +131,7 @@ flowchart TD
   repairOpen --> repairReviewReq["repair PR review_requested<br/>維持 Fixing 並通知 reviewer<br/>已實作 + 已 live 測"]
   repairOpen --> repairComment["repair PR review commented<br/>通知 fixer / assignee<br/>已實作 + 已 live 測"]
   repairOpen --> repairChange["repair PR changes_requested<br/>通知 fixer / assignee<br/>已實作 + blocked"]
-  repairOpen --> repairApprove["repair PR approved<br/>不改狀態，等待 merge<br/>已實作 + blocked"]
+  repairOpen --> repairApprove["repair PR approved<br/>不改狀態，等待 merge<br/>已實作 + 已 live 測"]
   repairOpen --> repairClosed["repair PR closed not merged<br/>寫入 closed line，不標 resolved<br/>已實作 + 已 live 測"]
   repairOpen --> repairMerged["repair PR merged<br/>寫入 Resolved Repo Execution / merged line<br/>已實作 + 已 live 測"]
   repairMerged --> allResolved{"Resolved covers all Affected?"}
@@ -144,12 +144,12 @@ flowchart TD
   classDef blocked fill:#ffedd5,stroke:#ea580c,color:#7c2d12,stroke-width:2px
   classDef todo fill:#e5e7eb,stroke:#6b7280,color:#374151,stroke-width:2px
 
-  class issueOpen,aiRoute,fixBranch,repairOpen,repairReviewReq,repairComment,repairClosed,repairMerged,allResolved,techFixed,keepFixing done
-  class repairChange,repairApprove blocked
+  class issueOpen,aiRoute,fixBranch,repairOpen,repairReviewReq,repairComment,repairApprove,repairClosed,repairMerged,allResolved,techFixed,keepFixing done
+  class repairChange blocked
   class workerRoute,retest,reopen todo
 ```
 
-目前 blocked 的原因：PR #11 已 request 並 tag `zeallin`，但還沒有非 PR author 的 `changes_requested` / `approved` review。
+目前 blocked 的原因：PR #11 已重新 request 並 tag `zeallin`，但還缺非 PR author 的 `changes_requested` review。
 
 ## 5. 使用者端 AI Repair Skill Flow
 
@@ -223,14 +223,16 @@ flowchart TD
 | branch / PR / cascade Notion mention | 已實作 | 已 live 測 | 可用。 |
 | SB PR opened / closed / merge staging / merge prod | 已實作 | 已 live 測 | 可用。 |
 | SB PR `review_requested` | 已實作 | 已 live 測 | 可用。 |
-| SB PR review `commented/changes_requested/approved` | 已實作 | blocked | 等 Zeal 在 PR #10 送出真人 review。 |
+| SB PR review `commented` | 已實作 | 已 live 測 | Zeal Lin 在 PR #10 送出真人 `pull_request_review COMMENTED`，Notion 正確打回 `DEV IN PROGRESS` 並留言通知。 |
+| SB PR review `changes_requested/approved` | 已實作 | blocked | 等 Zeal 在 PR #10 送出真人 review。 |
 | Feature Hub rollup | 已實作 | 已 live 測 | 可用。 |
 | Feature Hub `FUNC REVIEW FAILED` / `DONE` / `ABANDONED` cascade | 已實作 | 已 live 測 | 可用。 |
 | Parent Feature Hub reviewer inheritance | 已實作 | 已 live 測 | 可用。 |
 | Review Issue repair PR opened / closed / merged | 已實作 | 已 live 測 | 可用。 |
 | Review Issue repair PR `review_requested` | 已實作 | 已 live 測 | 可用。 |
 | Review Issue repair PR review `commented` | 已實作 | 已 live 測 | Gemini Code Assist 真實 `pull_request_review COMMENTED` 已觸發。 |
-| Review Issue repair PR review `changes_requested/approved` | 已實作 | blocked | 等 Zeal 在 PR #11 送出真人 review。 |
+| Review Issue repair PR review `approved` | 已實作 | 已 live 測 | Zeal Lin 在 PR #11 送出真人 `APPROVED`，workflow log 顯示等待 merge，不改 Notion 狀態。 |
+| Review Issue repair PR review `changes_requested` | 已實作 | blocked | 等 Zeal 在 PR #11 送出真人 review。 |
 | Review Issue multi-repo completion | 已實作 | 已 live 測 | 可用。 |
 | Review Issue terminal status guard | 已實作 | 已 live 測 | 可用。 |
 | 使用者端 AI repair skill E2E | 已實作 | 已 live 測核心 E2E | 可用；Sprint URL 入口尚未單獨另跑，但 relation resolve 已由 ISS-201 覆蓋。 |
@@ -241,7 +243,7 @@ flowchart TD
 
 ## 9. 下一步 Gate
 
-1. 等 PR #10 的 Zeal review 補完 `SB-*` review `commented/changes_requested/approved`。
-2. 等 PR #11 的 Zeal review 補完 `ISS-*` review `changes_requested/approved`。
+1. 等 PR #10 的 Zeal review 補完 `SB-*` review `changes_requested/approved`。
+2. 等 PR #11 的 Zeal review 補完 `ISS-*` review `changes_requested`。
 3. 補測完成後更新本文件、測試狀態表與 progress dashboard。
 4. 以上完成或保留明確 blocked reason 後，才開始 Notion Worker / Agent 設定。
