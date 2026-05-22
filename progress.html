@@ -242,8 +242,8 @@
         <div class="subtitle">github-docs Notion 自動化重構與部署：完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。</div>
       </div>
       <div class="timestamp">
-        <p>資料更新：2026-05-22T14:10:00+08:00</p>
-        <p>HTML 產生：2026-05-22T14:06:18+08:00</p>
+        <p>資料更新：2026-05-22T15:36:55+08:00</p>
+        <p>HTML 產生：2026-05-22T15:40:12+08:00</p>
       </div>
     </header>
 
@@ -261,8 +261,8 @@
         </div>
         <div class="hero-card">
           <div class="label">目前焦點</div>
-          <div style="font-size: 22px; font-weight: 900; margin-bottom: 10px;">功能 F2 · 任務 T2.7</div>
-          <p>已完成真實 Notion + GitHub Actions live integration test；目前 Phase 1 live automation 仍由 GitHub Actions 執行，Notion Agent / Worker 尚未實作部署。</p>
+          <div style="font-size: 22px; font-weight: 900; margin-bottom: 10px;">功能 F2 · 任務 T2.9</div>
+          <p>已補測多數 GitHub Actions live flow；剩餘未測項目主要是需要第二個 GitHub reviewer 的 review event 與使用者端 AI skill 正式 code repair E2E。</p>
         </div>
       </div>
     </section>
@@ -270,13 +270,13 @@
     <section class="kpi-grid">
       <article class="card">
         <div class="kpi-label">範圍完成</div>
-        <div class="kpi-value">10 / 11</div>
+        <div class="kpi-value">12 / 13</div>
         <div class="kpi-note">已驗證任務才算真正完成；只有完成實作仍需補驗證證據。</div>
       </article>
       <article class="card">
         <div class="kpi-label">目前階段</div>
         <div class="kpi-value">已驗證</div>
-        <div class="kpi-note">真實 Notion + GitHub Actions 完整流程測試</div>
+        <div class="kpi-note">補測已實作 GitHub Actions live flow</div>
       </article>
       <article class="card">
         <div class="kpi-label">阻塞項目</div>
@@ -326,7 +326,7 @@
           <div class="feature-hub">
             <div class="feature-focus-panels">
 <div id="feature-panel-f1-focus" class="feature-focus-panel" data-feature-panel="F1" hidden>
-  
+
 <div class="feature-focus-card">
   <div>
     <span class="pill success">目前功能 · 正常</span>
@@ -344,7 +344,7 @@
 </div>
 
 <div id="feature-panel-f2-focus" class="feature-focus-panel" data-feature-panel="F2">
-  
+
 <div class="feature-focus-card">
   <div>
     <span class="pill success">目前功能 · 正常</span>
@@ -353,9 +353,9 @@
   </div>
   <div class="feature-focus-meta">
     <div class="feature-focus-metric"><small>進度</small><strong>100%</strong></div>
-    <div class="feature-focus-metric"><small>任務</small><strong>6/7</strong></div>
+    <div class="feature-focus-metric"><small>任務</small><strong>8/9</strong></div>
     <div class="feature-focus-metric"><small>阻塞</small><strong>0</strong></div>
-    <div class="feature-focus-metric"><small>焦點</small><strong>任務 T2.7</strong></div>
+    <div class="feature-focus-metric"><small>焦點</small><strong>任務 T2.9</strong></div>
   </div>
 </div>
 
@@ -390,7 +390,7 @@
   <div class="scope-map">
 <section class="scope-column">
   <div class="scope-column-head">文件 <span class="pill green">2/2</span></div>
-  
+
 <article class="scope-task">
   <strong>確認 live workflow 中需要保留的既有行為</strong>
   <div class="task-meta">
@@ -411,7 +411,7 @@
 
 <section class="scope-column">
   <div class="scope-column-head">後端 <span class="pill green">1/1</span></div>
-  
+
 <article class="scope-task">
   <strong>實作 Phase 1 workflow 去 Fix Task 化</strong>
   <div class="task-meta">
@@ -424,7 +424,7 @@
 
 <section class="scope-column">
   <div class="scope-column-head">Product / Spec <span class="pill green">1/1</span></div>
-  
+
 <article class="scope-task">
   <strong>確認 Notion 新能力的技術邊界</strong>
   <div class="task-meta">
@@ -441,7 +441,7 @@
   <div class="scope-map">
 <section class="scope-column">
   <div class="scope-column-head">文件 <span class="pill yellow">1/2</span></div>
-  
+
 <article class="scope-task">
   <strong>建立 progress-dashboard 基礎檔案</strong>
   <div class="task-meta">
@@ -462,7 +462,7 @@
 
 <section class="scope-column">
   <div class="scope-column-head">Docs / Ops <span class="pill green">2/2</span></div>
-  
+
 <article class="scope-task">
   <strong>同步 Notion 技能頁與 Local Runtime 路由頁</strong>
   <div class="task-meta">
@@ -482,8 +482,21 @@
 </section>
 
 <section class="scope-column">
+  <div class="scope-column-head">Docs / Qa Planning <span class="pill green">1/1</span></div>
+
+<article class="scope-task">
+  <strong>建立 Notion 自動化流程測試狀態文件</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T2.8</span>
+  </div>
+</article>
+
+</section>
+
+<section class="scope-column">
   <div class="scope-column-head">Ops <span class="pill green">1/1</span></div>
-  
+
 <article class="scope-task">
   <strong>確認是否可直接更新 Notion schema</strong>
   <div class="task-meta">
@@ -495,8 +508,8 @@
 </section>
 
 <section class="scope-column">
-  <div class="scope-column-head">Ops / Verification <span class="pill green">2/2</span></div>
-  
+  <div class="scope-column-head">Ops / Verification <span class="pill green">3/3</span></div>
+
 <article class="scope-task">
   <strong>用真實 Notion 資料本地 dry-run 新流程</strong>
   <div class="task-meta">
@@ -513,6 +526,14 @@
   </div>
 </article>
 
+<article class="scope-task">
+  <strong>補測已實作 GitHub Actions live flow</strong>
+  <div class="task-meta">
+    <span class="pill success">已驗證</span>
+    <span class="pill blue">任務 T2.9</span>
+  </div>
+</article>
+
 </section>
 </div>
 </div>
@@ -521,7 +542,7 @@
 
         <div class="feature-management-panels">
 <div class="feature-panel" data-feature-panel="F1" hidden>
-  
+
 <section class="card">
   <div class="card-title">
     <h3>所選功能的管理視角</h3>
@@ -581,7 +602,7 @@
 
 <section class="mini-lane">
   <div class="mini-lane-title">已完成 <span>4</span></div>
-  
+
 <article class="task-card">
   <strong>確認 live workflow 中需要保留的既有行為</strong>
   <div class="task-meta">
@@ -644,7 +665,7 @@
   <div class="timeline-board">
 <div class="timeline-track">
   <div class="timeline-track-label">文件<small>2 個任務</small></div>
-  
+
 <div class="timeline-bar success" style="grid-column: 1 / 3;">
   確認 live workflow 中需要保留的既有行為
   <small>已驗證 · 100%</small>
@@ -659,7 +680,7 @@
 
 <div class="timeline-track">
   <div class="timeline-track-label">後端<small>1 個任務</small></div>
-  
+
 <div class="timeline-bar success" style="grid-column: 2 / 4;">
   實作 Phase 1 workflow 去 Fix Task 化
   <small>已驗證 · 100%</small>
@@ -669,7 +690,7 @@
 
 <div class="timeline-track">
   <div class="timeline-track-label">Product / Spec<small>1 個任務</small></div>
-  
+
 <div class="timeline-bar success" style="grid-column: 3 / 5;">
   確認 Notion 新能力的技術邊界
   <small>已驗證 · 100%</small>
@@ -696,6 +717,18 @@
   <td>{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</td>
   <td><span class="pill yellow">待處理</span></td>
 </tr>
+
+<tr>
+  <td>未覆蓋</td>
+  <td>{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested、approved、changes_requested、commented 需要非 PR author reviewer；本輪不 ping 真實同事，因此列為 blocked / not covered。&#x27;}</td>
+  <td><span class="pill yellow">待處理</span></td>
+</tr>
+
+<tr>
+  <td>未覆蓋</td>
+  <td>{&#x27;item&#x27;: &#x27;使用者端 AI skill 正式 code repair E2E&#x27;, &#x27;reason&#x27;: &#x27;本輪補測的是 workflow sync 與空 commit PR；尚未用真實 bug 進行 AI skill 判斷 repo、改 code、跑測試、開 repair PR 的完整流程。&#x27;}</td>
+  <td><span class="pill yellow">待處理</span></td>
+</tr>
 </tbody>
   </table>
 </div>
@@ -704,7 +737,7 @@
   </div>
 </section>
 
-  
+
 <section class="card blocker-diagnosis">
   <div class="card-title">
     <h3>阻塞診斷</h3>
@@ -733,7 +766,7 @@
 </div>
 
 <div class="feature-panel" data-feature-panel="F2">
-  
+
 <section class="card">
   <div class="card-title">
     <h3>所選功能的管理視角</h3>
@@ -783,7 +816,7 @@
 
 <section class="mini-lane">
   <div class="mini-lane-title">審查中 <span>1</span></div>
-  
+
 <article class="task-card">
   <strong>建立 progress-dashboard 基礎檔案</strong>
   <div class="task-meta">
@@ -800,8 +833,8 @@
 </section>
 
 <section class="mini-lane">
-  <div class="mini-lane-title">已完成 <span>6</span></div>
-  
+  <div class="mini-lane-title">已完成 <span>8</span></div>
+
 <article class="task-card">
   <strong>重新產生 progress.html</strong>
   <div class="task-meta">
@@ -850,6 +883,22 @@
   </div>
 </article>
 
+<article class="task-card">
+  <strong>建立 Notion 自動化流程測試狀態文件</strong>
+  <div class="task-meta">
+    <span class="pill purple">Docs / Qa Planning</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
+<article class="task-card">
+  <strong>補測已實作 GitHub Actions live flow</strong>
+  <div class="task-meta">
+    <span class="pill purple">Ops / Verification</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
 </section>
 </div></div>
       <div class="tab-panel workstream-panel"><div class="load-grid">
@@ -862,6 +911,13 @@
 
 <article class="management-card">
   <h4>Docs / Ops</h4>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
+</article>
+
+<article class="management-card">
+  <h4>Docs / Qa Planning</h4>
   <div class="kpi-value small-value">100%</div>
   <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
   <div class="kpi-note">0 未完成 / 0 已阻塞</div>
@@ -887,7 +943,7 @@
   <div class="timeline-board">
 <div class="timeline-track">
   <div class="timeline-track-label">文件<small>2 個任務</small></div>
-  
+
 <div class="timeline-bar warning" style="grid-column: 1 / 3;">
   建立 progress-dashboard 基礎檔案
   <small>待驗證 · 100%</small>
@@ -902,7 +958,7 @@
 
 <div class="timeline-track">
   <div class="timeline-track-label">Docs / Ops<small>2 個任務</small></div>
-  
+
 <div class="timeline-bar success" style="grid-column: 2 / 4;">
   同步 Notion 技能頁與 Local Runtime 路由頁
   <small>已驗證 · 100%</small>
@@ -916,9 +972,19 @@
 </div>
 
 <div class="timeline-track">
-  <div class="timeline-track-label">Ops<small>1 個任務</small></div>
-  
+  <div class="timeline-track-label">Docs / Qa Planning<small>1 個任務</small></div>
+
 <div class="timeline-bar success" style="grid-column: 3 / 5;">
+  建立 Notion 自動化流程測試狀態文件
+  <small>已驗證 · 100%</small>
+</div>
+
+</div>
+
+<div class="timeline-track">
+  <div class="timeline-track-label">Ops<small>1 個任務</small></div>
+
+<div class="timeline-bar success" style="grid-column: 4 / 6;">
   確認是否可直接更新 Notion schema
   <small>已驗證 · 100%</small>
 </div>
@@ -926,15 +992,20 @@
 </div>
 
 <div class="timeline-track">
-  <div class="timeline-track-label">Ops / Verification<small>2 個任務</small></div>
-  
-<div class="timeline-bar success" style="grid-column: 4 / 6;">
+  <div class="timeline-track-label">Ops / Verification<small>3 個任務</small></div>
+
+<div class="timeline-bar success" style="grid-column: 5 / 7;">
   用真實 Notion 資料本地 dry-run 新流程
   <small>已驗證 · 100%</small>
 </div>
 
-<div class="timeline-bar success" style="grid-column: 5 / 7;">
+<div class="timeline-bar success" style="grid-column: 6 / 8;">
   真實 Notion + GitHub Actions 完整流程測試
+  <small>已驗證 · 100%</small>
+</div>
+
+<div class="timeline-bar success" style="grid-column: 6 / 8;">
+  補測已實作 GitHub Actions live flow
   <small>已驗證 · 100%</small>
 </div>
 
@@ -959,6 +1030,18 @@
   <td>{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</td>
   <td><span class="pill yellow">待處理</span></td>
 </tr>
+
+<tr>
+  <td>未覆蓋</td>
+  <td>{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested、approved、changes_requested、commented 需要非 PR author reviewer；本輪不 ping 真實同事，因此列為 blocked / not covered。&#x27;}</td>
+  <td><span class="pill yellow">待處理</span></td>
+</tr>
+
+<tr>
+  <td>未覆蓋</td>
+  <td>{&#x27;item&#x27;: &#x27;使用者端 AI skill 正式 code repair E2E&#x27;, &#x27;reason&#x27;: &#x27;本輪補測的是 workflow sync 與空 commit PR；尚未用真實 bug 進行 AI skill 判斷 repo、改 code、跑測試、開 repair PR 的完整流程。&#x27;}</td>
+  <td><span class="pill yellow">待處理</span></td>
+</tr>
 </tbody>
   </table>
 </div>
@@ -967,7 +1050,7 @@
   </div>
 </section>
 
-  
+
 <section class="card blocker-diagnosis">
   <div class="card-title">
     <h3>阻塞診斷</h3>
@@ -1044,9 +1127,9 @@
 <div class="status-row tone-success">
   <div class="status-row-label">
     <span>已驗證</span>
-    <strong>10</strong>
+    <strong>12</strong>
   </div>
-  <div class="mini-bar"><span style="width: 91%"></span></div>
+  <div class="mini-bar"><span style="width: 92%"></span></div>
 </div>
 
 <div class="status-row tone-warning">
@@ -1078,7 +1161,7 @@
     <span>待驗證</span>
     <strong>1</strong>
   </div>
-  <div class="mini-bar"><span style="width: 9%"></span></div>
+  <div class="mini-bar"><span style="width: 8%"></span></div>
 </div>
 
 <div class="status-row tone-danger">
@@ -1112,7 +1195,7 @@
   <em>功能 F2 · 任務 T2.1 · 100%</em>
 </li>
 </ol></div>
-            <div><h4>風險 / 缺口</h4><ul><li>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</li></ul></div>
+            <div><h4>風險 / 缺口</h4><ul><li>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested、approved、changes_requested、commented 需要非 PR author reviewer；本輪不 ping 真實同事，因此列為 blocked / not covered。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;使用者端 AI skill 正式 code repair E2E&#x27;, &#x27;reason&#x27;: &#x27;本輪補測的是 workflow sync 與空 commit PR；尚未用真實 bug 進行 AI skill 判斷 repo、改 code、跑測試、開 repair PR 的完整流程。&#x27;}</li></ul></div>
           </div>
         </section>
       </div>
@@ -1121,7 +1204,7 @@
       <div class="drawer-backdrop" data-drawer-close aria-hidden="true"></div>
       <div id="task-detail-drawer" class="feature-drawer-panels" aria-hidden="true">
 <div class="feature-drawer-panel" data-feature-panel="F1" hidden>
-  
+
 <aside class="card side-card">
   <div class="card-title drawer-card-title">
     <h3>任務細節抽屜</h3>
@@ -1194,7 +1277,7 @@
 </div>
 
 <div class="feature-drawer-panel" data-feature-panel="F2">
-  
+
 <aside class="card side-card">
   <div class="card-title drawer-card-title">
     <h3>任務細節抽屜</h3>
@@ -1204,8 +1287,8 @@
     </div>
   </div>
   <div class="detail-block-static">
-    <div class="detail-label">功能 F2 · 任務 T2.7</div>
-    <div class="detail-value"><strong>真實 Notion + GitHub Actions 完整流程測試</strong></div>
+    <div class="detail-label">功能 F2 · 任務 T2.9</div>
+    <div class="detail-value"><strong>補測已實作 GitHub Actions live flow</strong></div>
   </div>
   <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div><span>100%</span></div>
   <div class="detail-block-static">
@@ -1248,7 +1331,7 @@
   </div>
   <div class="detail-block-static">
     <div class="detail-label">修改檔案</div>
-    <div class="detail-value"><ul><li>/Users/peterting/Documents/artogo/github-docs/progress.json</li><li>/Users/peterting/Documents/artogo/github-docs/progress.html</li></ul></div>
+    <div class="detail-value"><ul><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md</li><li>/Users/peterting/Documents/artogo/github-docs/progress.json</li><li>/Users/peterting/Documents/artogo/github-docs/progress.html</li></ul></div>
   </div>
   <div class="detail-block-static">
     <div class="detail-label">檢查清單 / 子任務</div>
@@ -1256,7 +1339,7 @@
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗證證據</div>
-    <div class="detail-value"><ul class="evidence"><li><strong>notion</strong>: Sprint Backlog SB-2213 https://www.notion.so/3685135e076e81f18cdfedec52d1eb0a <span>建立 [TEST][Codex] Repo Execution；branch workflow 回寫 GitHub Branch=feat/SB-2213_test_codex_notion_live_automat；PR opened 回寫 PR Status=Open / TECH REVIEW；PR closed-not-merged 回寫 PR Status=Closed / DEV IN PROGRESS；測試完成後標 ABANDONED。</span></li><li><strong>github-actions</strong>: tool-imagecompressor Notion branch run 26271165149 <span>workflow_dispatch 成功，log 顯示 Found 1 tasks、Processing SB-2213、Branch created、Updated Notion。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR sync runs 26271213059 and 26271239716 <span>PR #2 opened/closed-not-merged 兩次 sync 都成功，Notion 欄位符合預期。</span></li><li><strong>notion</strong>: Review Issue ISS-195 https://www.notion.so/3685135e076e81f9ae70f7fa17b40c3b <span>建立 [TEST][Codex] Review Issue；Affected Repo Execution 指向 SB-2213；repair PR opened 後狀態 Fixing 且寫入 Repair PR URLs；repair PR merged 後 Resolved Repo Execution 覆蓋 affected，狀態變 Tech Fixed。</span></li><li><strong>github</strong>: tool-imagecompressor PR #2 and PR #3 <span>PR #2 已 closed not merged；PR #3 已 merged，merge commit a42edd2。測試 branch 已清理。</span></li><li><strong>command</strong>: rg on docs/shared-skills/.github plus Notion page fetch <span>確認 Notion Agent / Worker 目前沒有實作部署；正式 live automation 仍是 GitHub Actions，Agent / Worker 是後續 Phase 2+ 遷移方向。</span></li></ul></div>
+    <div class="detail-value"><ul class="evidence"><li><strong>github-actions</strong>: tool-imagecompressor runs 26273737393, 26273785058, 26273809670, 26273841914, 26273866058 <span>驗證 SB-2217 / SB-2218 parent Task ID branch、PR opened、staging merge、production merge、no-backward guard 與 Feature Hub rollup。</span></li><li><strong>github-actions</strong>: github-docs cascade runs 26273974018, 26274011037, 26274062773 and tool-imagecompressor run 26273906740 <span>驗證單張 Repo Execution FUNC REVIEW FAILED rollback、Feature Hub FUNC REVIEW FAILED rollback、DONE cascade、ABANDONED cascade。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #6 / #7 / #8 / #9 and mailtemplate PR #12 <span>驗證 ISS-196 closed-not-merged、ISS-197 terminal guard、ISS-198 multi-repo completion、ISS-199 Sprint fallback。</span></li><li><strong>github-actions</strong>: tool-imagecompressor run 26274615337 <span>驗證 BUG 任務類型建立 fix/SB-* branch、專案任務類型建立 project/SB-* branch。</span></li><li><strong>command</strong>: gh pr list / branch cleanup / git status <span>tool-imagecompressor 與 mailtemplate 測試 PR 均已關閉或合併；測試 branches 已刪除；測試 Notion cards 已標示為 ABANDONED / Fixed / Won&#x27;t Fix。</span></li></ul></div>
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗收條件 / 連結 / 最新更新</div>
@@ -1302,7 +1385,7 @@
   </div>
   <div class="goal-feature-list">
     <h4>關聯功能</h4>
-    
+
 <article class="goal-feature">
   <div class="goal-feature-head">
     <div>
@@ -1358,7 +1441,7 @@
     </div>
     <strong>100%</strong>
   </div>
-  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 14%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 14%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 14%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 14%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 14%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 14%" title="用真實 Notion 資料本地 dry-run 新流程"></span><span class="road-segment tone-success" style="width: 14%" title="真實 Notion + GitHub Actions 完整流程測試"></span></div>
+  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 11%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 11%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 11%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 11%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 11%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 11%" title="用真實 Notion 資料本地 dry-run 新流程"></span><span class="road-segment tone-success" style="width: 11%" title="真實 Notion + GitHub Actions 完整流程測試"></span><span class="road-segment tone-success" style="width: 11%" title="建立 Notion 自動化流程測試狀態文件"></span><span class="road-segment tone-success" style="width: 11%" title="補測已實作 GitHub Actions live flow"></span></div>
   <div class="feature-rationale">
     <div>
       <h4>為何必要</h4>
@@ -1406,6 +1489,16 @@
   <span>已驗證</span>
   <strong>真實 Notion + GitHub Actions 完整流程測試</strong>
 </li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>建立 Notion 自動化流程測試狀態文件</strong>
+</li>
+
+<li class="work-chip tone-success">
+  <span>已驗證</span>
+  <strong>補測已實作 GitHub Actions live flow</strong>
+</li>
 </ul>
   </div>
 </article>
@@ -1437,10 +1530,10 @@
             <strong>展開任務明細</strong>
             <span>查看每個功能底下的任務、修改檔案與驗證證據。</span>
           </div>
-          <span>11 個任務</span>
+          <span>13 個任務</span>
         </summary>
         <div class="detail-body">
-          
+
 <details class="feature-detail">
   <summary>
     <span>功能 F1</span>
@@ -1471,7 +1564,7 @@
       <ul class="evidence"><li><strong>command</strong>: sed / rg on .github/workflows/notion-pr-sync-reusable.yml and notion-review-fix-task-scheduler.yml <span>已確認現行 workflow 的保留點與方向。</span></li></ul>
     </section>
   </div>
-  
+
 </article>
 
 
@@ -1497,7 +1590,7 @@
       <ul class="evidence"><li><strong>web</strong>: Notion official docs: Custom Agents, Workers Overview, Syncs <span>已用官方文件確認架構邊界。</span></li></ul>
     </section>
   </div>
-  
+
 </article>
 
 
@@ -1584,7 +1677,7 @@
       <p class="muted">尚未記錄驗證證據。</p>
     </section>
   </div>
-  
+
 </article>
 
 
@@ -1610,7 +1703,7 @@
       <ul class="evidence"><li><strong>command</strong>: python3 scripts/render_progress.py progress.json progress.html <span>progress.html 已重新產生。</span></li></ul>
     </section>
   </div>
-  
+
 </article>
 
 
@@ -1636,7 +1729,7 @@
       <ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._notion_update_data_source on collection://43a7a9ab-12f8-440f-8b79-fd8df7ac3e67 and collection://f16a2bd0-b855-4da9-8d68-273003c1ba11 <span>Review Issue 已新增 Affected Repo Execution、Resolved Repo Execution、Repair Routing Summary、Repair PR URLs、Last Repair Sync At、Reopen Count；Review Issue 與 Sprint Backlog 都已移除 🔧 Fix Tasks，Sprint Backlog 也已移除 AI Dev Prompt。</span></li></ul>
     </section>
   </div>
-  
+
 </article>
 
 
@@ -1662,7 +1755,7 @@
       <ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._notion_update_page on fix-sprint-review-issues, notion-product-architecture, Local Runtime / Skills Map <span>三個 Notion 頁面都已改成 Review Issue 直修模型，並經 fetch 回讀確認內容已更新。</span></li></ul>
     </section>
   </div>
-  
+
 </article>
 
 
@@ -1688,7 +1781,7 @@
       <ul class="evidence"><li><strong>tool</strong>: mcp__codex_apps__notion._notion_update_page on Notion 產品開發流程自動化 <span>Notion 正式流程頁已替換為 Review Issue 直修模型，舊 Fix Task 只保留在 Legacy Items。</span></li><li><strong>command</strong>: rg on docs/next-agent-handover.md and docs/notion-github-automation-architecture.md <span>舊模型關鍵字只出現在 legacy / removed context，不再作為主流程說明。</span></li></ul>
     </section>
   </div>
-  
+
 </article>
 
 
@@ -1742,6 +1835,58 @@
   </div>
   <p class="notes">測試使用 tool-imagecompressor，Sprint 測試 branch 已清掉；repair PR 使用空 commit 並以 admin bypass 合併，沒有改動檔案內容，但 master 歷史新增一個測試 merge commit。</p>
 </article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.8</p>
+      <h4>建立 Notion 自動化流程測試狀態文件</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md</li><li>/Users/peterting/Documents/artogo/github-docs/progress.json</li><li>/Users/peterting/Documents/artogo/github-docs/progress.html</li></ul>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>command</strong>: ruby -rjson -e &#x27;JSON.parse(File.read(&quot;progress.json&quot;))&#x27; <span>progress.json 語法有效。</span></li><li><strong>command</strong>: python3 scripts/render_progress.py progress.json progress.html <span>progress.html 已依最新流程測試狀態重新產生。</span></li></ul>
+    </section>
+  </div>
+
+</article>
+
+
+<article class="task task-verified">
+  <div class="task-head">
+    <div>
+      <p class="eyebrow">任務 T2.9</p>
+      <h4>補測已實作 GitHub Actions live flow</h4>
+    </div>
+    <span class="status">已驗證</span>
+  </div>
+  <div class="task-progress">
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
+  </div>
+  <div class="task-grid">
+    <section>
+      <h5>修改檔案</h5>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md</li><li>/Users/peterting/Documents/artogo/github-docs/progress.json</li><li>/Users/peterting/Documents/artogo/github-docs/progress.html</li></ul>
+    </section>
+    <section>
+      <h5>驗證證據</h5>
+      <ul class="evidence"><li><strong>github-actions</strong>: tool-imagecompressor runs 26273737393, 26273785058, 26273809670, 26273841914, 26273866058 <span>驗證 SB-2217 / SB-2218 parent Task ID branch、PR opened、staging merge、production merge、no-backward guard 與 Feature Hub rollup。</span></li><li><strong>github-actions</strong>: github-docs cascade runs 26273974018, 26274011037, 26274062773 and tool-imagecompressor run 26273906740 <span>驗證單張 Repo Execution FUNC REVIEW FAILED rollback、Feature Hub FUNC REVIEW FAILED rollback、DONE cascade、ABANDONED cascade。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #6 / #7 / #8 / #9 and mailtemplate PR #12 <span>驗證 ISS-196 closed-not-merged、ISS-197 terminal guard、ISS-198 multi-repo completion、ISS-199 Sprint fallback。</span></li><li><strong>github-actions</strong>: tool-imagecompressor run 26274615337 <span>驗證 BUG 任務類型建立 fix/SB-* branch、專案任務類型建立 project/SB-* branch。</span></li><li><strong>command</strong>: gh pr list / branch cleanup / git status <span>tool-imagecompressor 與 mailtemplate 測試 PR 均已關閉或合併；測試 branches 已刪除；測試 Notion cards 已標示為 ABANDONED / Fixed / Won&#x27;t Fix。</span></li></ul>
+    </section>
+  </div>
+  <p class="notes">測試使用 tool-imagecompressor 與 mailtemplate 空 commit PR。tool-imagecompressor/master 與 mailtemplate/main 因測試 merge 產生空 commit merge history；檔案內容未變。review_requested / GitHub review submitted 類流程需要非 PR author reviewer，本輪未 ping 真實同事，列為 blocked / not covered。</p>
+</article>
 </div>
 </details>
 
@@ -1754,10 +1899,10 @@
             <strong>展開變更紀錄</strong>
             <span>查看對話中造成範圍、需求或驗證狀態改變的紀錄。</span>
           </div>
-          <span>7 筆</span>
+          <span>9 筆</span>
         </summary>
         <div class="detail-body">
-          <ul class="change-log"><li><strong>2026-05-20T18:55:00+08:00</strong> user: 正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。<span>整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。</span></li><li><strong>2026-05-20T19:10:00+08:00</strong> user: 確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。<span>新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。</span></li><li><strong>2026-05-21T10:10:00+08:00</strong> system: 開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。<span>repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。</span></li><li><strong>2026-05-21T14:45:00+08:00</strong> tool: Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。<span>Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。</span></li><li><strong>2026-05-21T15:35:00+08:00</strong> user: 要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。<span>next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。</span></li><li><strong>2026-05-21T20:05:00+08:00</strong> user: 要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。<span>增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。</span></li><li><strong>2026-05-22T14:10:00+08:00</strong> user: 要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。<span>新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。</span></li></ul>
+          <ul class="change-log"><li><strong>2026-05-20T18:55:00+08:00</strong> user: 正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。<span>整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。</span></li><li><strong>2026-05-20T19:10:00+08:00</strong> user: 確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。<span>新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。</span></li><li><strong>2026-05-21T10:10:00+08:00</strong> system: 開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。<span>repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。</span></li><li><strong>2026-05-21T14:45:00+08:00</strong> tool: Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。<span>Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。</span></li><li><strong>2026-05-21T15:35:00+08:00</strong> user: 要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。<span>next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。</span></li><li><strong>2026-05-21T20:05:00+08:00</strong> user: 要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。<span>增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。</span></li><li><strong>2026-05-22T14:10:00+08:00</strong> user: 要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。<span>新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。</span></li><li><strong>2026-05-22T15:01:25+08:00</strong> user: 要求先把所有流程與測試狀態寫成文件，之後先補測所有可測流程，再開始 Notion Worker 設定。<span>新增流程測試狀態文件作為 source of truth，並把 Notion Worker 設定放到可測 GitHub Actions / skill 路徑補測之後。</span></li><li><strong>2026-05-22T15:36:55+08:00</strong> tool: 完成多數已實作 GitHub Actions live flow 補測，包含 staging/prod merge、rollup、cascade、repair closed-not-merged、terminal guard、多 repo completion、Sprint fallback 與 branch prefix。<span>Notion Worker 前的主要 GitHub Actions 狀態機已以真實 Notion/GitHub side effect 驗證；剩餘 review event 需要第二個 GitHub reviewer，AI skill code repair E2E 仍未覆蓋。</span></li></ul>
         </div>
       </details>
     </div>

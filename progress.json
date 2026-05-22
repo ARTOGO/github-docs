@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-22T14:10:00+08:00",
+  "updated_at": "2026-05-22T15:36:55+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -12,8 +12,8 @@
   ],
   "current_focus": {
     "feature_id": "F2",
-    "task_id": "T2.7",
-    "summary": "已完成真實 Notion + GitHub Actions live integration test；目前 Phase 1 live automation 仍由 GitHub Actions 執行，Notion Agent / Worker 尚未實作部署。"
+    "task_id": "T2.9",
+    "summary": "已補測多數 GitHub Actions live flow；剩餘未測項目主要是需要第二個 GitHub reviewer 的 review event 與使用者端 AI skill 正式 code repair E2E。"
   },
   "conversation_changes": [
     {
@@ -57,6 +57,18 @@
       "source": "user",
       "change": "要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。",
       "impact": "新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。"
+    },
+    {
+      "at": "2026-05-22T15:01:25+08:00",
+      "source": "user",
+      "change": "要求先把所有流程與測試狀態寫成文件，之後先補測所有可測流程，再開始 Notion Worker 設定。",
+      "impact": "新增流程測試狀態文件作為 source of truth，並把 Notion Worker 設定放到可測 GitHub Actions / skill 路徑補測之後。"
+    },
+    {
+      "at": "2026-05-22T15:36:55+08:00",
+      "source": "tool",
+      "change": "完成多數已實作 GitHub Actions live flow 補測，包含 staging/prod merge、rollup、cascade、repair closed-not-merged、terminal guard、多 repo completion、Sprint fallback 與 branch prefix。",
+      "impact": "Notion Worker 前的主要 GitHub Actions 狀態機已以真實 Notion/GitHub side effect 驗證；剩餘 review event 需要第二個 GitHub reviewer，AI skill code repair E2E 仍未覆蓋。"
     }
   ],
   "goal_groups": [
@@ -394,6 +406,83 @@
               "result": "確認 Notion Agent / Worker 目前沒有實作部署；正式 live automation 仍是 GitHub Actions，Agent / Worker 是後續 Phase 2+ 遷移方向。"
             }
           ]
+        },
+        {
+          "id": "T2.8",
+          "title": "建立 Notion 自動化流程測試狀態文件",
+          "status": "verified",
+          "workstream": "Docs / QA Planning",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "列出目前所有 GitHub Actions / AI skill / Notion Worker 相關流程",
+            "每條流程標示已 live 測、已 dry-run、已實作未 live 測、未實作不可測或已移除",
+            "明確列出 Notion Worker 前必須先補測的可測項目",
+            "重新產生 progress.html"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md",
+            "/Users/peterting/Documents/artogo/github-docs/progress.json",
+            "/Users/peterting/Documents/artogo/github-docs/progress.html"
+          ],
+          "evidence": [
+            {
+              "type": "command",
+              "ref": "ruby -rjson -e 'JSON.parse(File.read(\"progress.json\"))'",
+              "result": "progress.json 語法有效。"
+            },
+            {
+              "type": "command",
+              "ref": "python3 scripts/render_progress.py progress.json progress.html",
+              "result": "progress.html 已依最新流程測試狀態重新產生。"
+            }
+          ]
+        },
+        {
+          "id": "T2.9",
+          "title": "補測已實作 GitHub Actions live flow",
+          "status": "verified",
+          "workstream": "Ops / Verification",
+          "progress_percent": 100,
+          "definition_of_done": [
+            "補測 branch parent Task ID 與 branch prefix",
+            "補測 SB PR merge 到 staging / master 與 Feature Hub rollup",
+            "補測 Repo Execution / Feature Hub rollback 與 DONE / ABANDONED cascade",
+            "補測 Review Issue repair PR closed-not-merged、terminal guard、multi-repo completion、Sprint fallback",
+            "清理測試 branches / PRs 並將測試卡標成 terminal 狀態"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md",
+            "/Users/peterting/Documents/artogo/github-docs/progress.json",
+            "/Users/peterting/Documents/artogo/github-docs/progress.html"
+          ],
+          "notes": "測試使用 tool-imagecompressor 與 mailtemplate 空 commit PR。tool-imagecompressor/master 與 mailtemplate/main 因測試 merge 產生空 commit merge history；檔案內容未變。review_requested / GitHub review submitted 類流程需要非 PR author reviewer，本輪未 ping 真實同事，列為 blocked / not covered。",
+          "evidence": [
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor runs 26273737393, 26273785058, 26273809670, 26273841914, 26273866058",
+              "result": "驗證 SB-2217 / SB-2218 parent Task ID branch、PR opened、staging merge、production merge、no-backward guard 與 Feature Hub rollup。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "github-docs cascade runs 26273974018, 26274011037, 26274062773 and tool-imagecompressor run 26273906740",
+              "result": "驗證單張 Repo Execution FUNC REVIEW FAILED rollback、Feature Hub FUNC REVIEW FAILED rollback、DONE cascade、ABANDONED cascade。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor PR #6 / #7 / #8 / #9 and mailtemplate PR #12",
+              "result": "驗證 ISS-196 closed-not-merged、ISS-197 terminal guard、ISS-198 multi-repo completion、ISS-199 Sprint fallback。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor run 26274615337",
+              "result": "驗證 BUG 任務類型建立 fix/SB-* branch、專案任務類型建立 project/SB-* branch。"
+            },
+            {
+              "type": "command",
+              "ref": "gh pr list / branch cleanup / git status",
+              "result": "tool-imagecompressor 與 mailtemplate 測試 PR 均已關閉或合併；測試 branches 已刪除；測試 Notion cards 已標示為 ABANDONED / Fixed / Won't Fix。"
+            }
+          ]
         }
       ]
     }
@@ -415,7 +504,9 @@
     }
   ],
   "next_actions": [
-    "若要改成真正 Notion Agent / Worker 執行，需新增 Worker implementation 與 Notion trigger 設定",
+    "確認是否接受 review event 需要第二個 reviewer 因而暫列 blocked",
+    "若接受，下一步可開始 Notion Agent / Worker implementation 與 trigger 設定",
+    "若不接受，需安排第二個 GitHub reviewer 測 PR review_requested / review submitted 類流程",
     "若不想保留 tool-imagecompressor 空 commit 測試 merge，可再用一個 revert/test-cleanup PR 處理，但目前檔案內容沒有變化"
   ],
   "not_covered": [
@@ -426,6 +517,14 @@
     {
       "item": "Notion Agent / Worker runtime",
       "reason": "本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。"
+    },
+    {
+      "item": "GitHub review event live test",
+      "reason": "review_requested、approved、changes_requested、commented 需要非 PR author reviewer；本輪不 ping 真實同事，因此列為 blocked / not covered。"
+    },
+    {
+      "item": "使用者端 AI skill 正式 code repair E2E",
+      "reason": "本輪補測的是 workflow sync 與空 commit PR；尚未用真實 bug 進行 AI skill 判斷 repo、改 code、跑測試、開 repair PR 的完整流程。"
     }
   ]
 }
