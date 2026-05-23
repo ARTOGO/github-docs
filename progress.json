@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-23T18:58:00+08:00",
+  "updated_at": "2026-05-23T23:50:00+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -12,8 +12,8 @@
   ],
   "current_focus": {
     "feature_id": "F2",
-    "task_id": "T2.10",
-    "summary": "已確認 Zeal 的 PR #11 CHANGES_REQUESTED review event 成功觸發 Notion sync；GitHub Actions / AI repair skill 的已實作可測項目已補測完成。"
+    "task_id": "T2.12",
+    "summary": "開始 Notion Worker / Agent implementation；先落地 Worker tools 與真實 Notion live test，Custom Agent UI 設定若需 workspace 授權則列為部署 blocker。"
   },
   "conversation_changes": [
     {
@@ -105,6 +105,12 @@
       "source": "user",
       "change": "Zeal 已在 PR #11 送出 Request changes，要求檢查結果。",
       "impact": "確認 ISS-* changes_requested path 已 live 測通過；reviewer event 補測全部完成，下一步可進入 Notion Worker / Agent implementation。"
+    },
+    {
+      "at": "2026-05-23T23:50:00+08:00",
+      "source": "user",
+      "change": "要求直接開始 Notion Worker / Agent 設定，設定好後開始測試。",
+      "impact": "新增 Worker implementation / Agent setup / live test 作為目前焦點；若 Notion CLI 或 Custom Agent UI 需要互動授權，必須清楚標記 blocker。"
     }
   ],
   "goal_groups": [
@@ -644,6 +650,45 @@
               "type": "command",
               "ref": "rg / sed on docs/notion-automation-flow-test-status.md and docs/notion-automation-flow-map.md",
               "result": "flow map 狀態與測試盤點表一致，並在測試盤點表加入 flow map 連結。"
+            }
+          ]
+        },
+        {
+          "id": "T2.12",
+          "title": "實作 Notion Worker tools 與 Agent 設定指引",
+          "status": "doing",
+          "workstream": "Worker / Agent",
+          "progress_percent": 55,
+          "definition_of_done": [
+            "Worker tools 可執行 route / reroute / complete Review Issue",
+            "本地 typecheck 與 unit tests 通過",
+            "用真實 Notion database 跑 live side-effect 測試",
+            "確認 hosted Worker deploy 與 Custom Agent trigger 設定狀態",
+            "更新 docs / flow map / progress dashboard"
+          ],
+          "files": [
+            "/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/core.ts",
+            "/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/index.ts",
+            "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-worker-live-test.yml",
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md"
+          ],
+          "notes": "已完成 Worker-compatible tool implementation 與本地測試；本地 NOTION_TOKEN 對 Review Issue DB 無權限，真實 Notion live test 改由 GitHub Actions 使用既有 NOTION_API_KEY secret 執行。",
+          "blocker": "Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI。",
+          "evidence": [
+            {
+              "type": "command",
+              "ref": "npm run typecheck && npm test in workers/notion-product-workflow",
+              "result": "TypeScript typecheck 通過；3 個 unit tests 通過。"
+            },
+            {
+              "type": "command",
+              "ref": "NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test",
+              "result": "本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。"
+            },
+            {
+              "type": "command",
+              "ref": "../../.tools/ntn workers list --json",
+              "result": "Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。"
             }
           ]
         }

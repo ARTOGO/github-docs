@@ -1,0 +1,46 @@
+name: Notion Worker Live Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_execution_page_id:
+        description: "Repo Execution page ID used by the live test"
+        required: false
+        default: "3685135e-076e-81f4-b0fb-effb13be5c6e"
+
+concurrency:
+  group: notion-worker-live-test
+  cancel-in-progress: false
+
+jobs:
+  live-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/notion-product-workflow
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: workers/notion-product-workflow/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Live test against Notion
+        env:
+          NOTION_API_TOKEN: ${{ secrets.NOTION_API_KEY }}
+          REVIEW_ISSUE_DB_ID: ${{ secrets.REVIEW_ISSUE_DB_ID }}
+          TEST_REPO_EXECUTION_PAGE_ID: ${{ inputs.repo_execution_page_id }}
+        run: npm run live:test

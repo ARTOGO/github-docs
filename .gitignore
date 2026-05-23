@@ -1,1 +1,8 @@
 .claude/settings.local.json
+node_modules/
+.env
+.env.*
+workers/**/node_modules/
+workers/**/.env
+workers/**/.env.*
+.tools/
