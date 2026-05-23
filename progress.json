@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-23T09:23:18+08:00",
+  "updated_at": "2026-05-23T10:05:30+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -13,7 +13,7 @@
   "current_focus": {
     "feature_id": "F2",
     "task_id": "T2.10",
-    "summary": "已確認 Zeal 的 PR #10 CHANGES_REQUESTED review event 成功觸發 Notion sync；剩餘 SB approved 與 ISS changes_requested 等 Zeal 補送。"
+    "summary": "已確認 Zeal 的 PR #10 APPROVED review event 成功觸發 Notion sync 且符合等待 merge 設計；剩餘 ISS changes_requested 等 Zeal 補送。"
   },
   "conversation_changes": [
     {
@@ -93,6 +93,12 @@
       "source": "user",
       "change": "Zeal 已在 PR #10 送出 Request changes，要求檢查結果。",
       "impact": "確認 SB-* changes_requested path 已 live 測通過；剩餘 PR #10 approved 與 PR #11 changes_requested。"
+    },
+    {
+      "at": "2026-05-23T10:05:30+08:00",
+      "source": "user",
+      "change": "Zeal 已在 PR #10 送出 Approve，要求檢查結果。",
+      "impact": "確認 SB-* approved path 已 live 測通過；剩餘 PR #11 changes_requested。"
     }
   ],
   "goal_groups": [
@@ -513,7 +519,7 @@
           "title": "補測 reviewer event、Notion mention 與 AI repair skill E2E",
           "status": "blocked",
           "workstream": "Ops / Verification",
-          "progress_percent": 96,
+          "progress_percent": 98,
           "definition_of_done": [
             "live 測 `SB-*` PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
             "live 測 `ISS-*` repair PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
@@ -526,8 +532,8 @@
             "/Users/peterting/Documents/artogo/github-docs/progress.json",
             "/Users/peterting/Documents/artogo/github-docs/progress.html"
           ],
-          "notes": "Zeal 已在 PR #10 送出 COMMENTED / CHANGES_REQUESTED，並在 PR #11 送出 APPROVED；三個 pull_request_review run 均成功，Notion 結果符合設計。已重新 request/tag Zeal 補送 PR #10 Approve。",
-          "blocker": "等待 Zeal 在 PR #10 送出 SB-* approved，並在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。",
+          "notes": "Zeal 已在 PR #10 送出 COMMENTED / CHANGES_REQUESTED / APPROVED，並在 PR #11 送出 APPROVED；四個 pull_request_review run 均成功，Notion 結果符合設計。已重新 request/tag Zeal 補送 PR #11 Request changes。",
+          "blocker": "等待 Zeal 在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。",
           "evidence": [
             {
               "type": "github-actions",
@@ -583,6 +589,16 @@
               "type": "github",
               "ref": "tool-imagecompressor PR #10 comment 4523715012",
               "result": "已通知 Zeal：PR #10 Request changes 已驗證成功，接著請送 PR #10 Approve。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor PR #10 pull_request_review run 26320506418",
+              "result": "Zeal Lin `APPROVED` review 觸發成功；log 顯示 `Approved -> waiting for merge`，Notion `SB-2223` 維持 `TECH REVIEW` / `PR Status=Open`，且沒有新增 approve-specific comment，符合 approved 不改狀態設計。"
+            },
+            {
+              "type": "github",
+              "ref": "tool-imagecompressor PR #11 comment 4523826269",
+              "result": "已通知 Zeal：PR #10 Approve 已驗證成功，目前只剩 PR #11 Request changes。"
             }
           ]
         },
@@ -640,9 +656,8 @@
     }
   ],
   "next_actions": [
-    "等待 Zeal 在 tool-imagecompressor PR #10 送出 SB-* Approve review，確認 workflow log 顯示等待 merge 且 Notion 不被誤改",
     "等待 Zeal 在 tool-imagecompressor PR #11 送出 ISS-* Request changes review，確認 Notion 狀態與 comment 是否符合預期",
-    "Zeal review 補測完成後更新 docs/notion-automation-flow-test-status.md、progress.json、progress.html，並清理或關閉 PR #10 / #11",
+    "PR #11 changes_requested 補測完成後更新 docs/notion-automation-flow-test-status.md、progress.json、progress.html，並清理或關閉 PR #10 / #11",
     "review submitted 類流程補測完成或保留明確 blocked reason 後，再開始 Notion Worker / Agent implementation 與 trigger 設定"
   ],
   "not_covered": [
@@ -656,7 +671,7 @@
     },
     {
       "item": "GitHub review event live test",
-      "reason": "review_requested 已 live 測；SB-* commented / changes_requested 已由 Zeal live 測；ISS-* repair PR commented 已由 Gemini live 測；ISS-* approved 已由 Zeal live 測。剩餘 SB-* approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。"
+      "reason": "review_requested 已 live 測；SB-* commented / changes_requested / approved 已由 Zeal live 測；ISS-* repair PR commented 已由 Gemini live 測；ISS-* approved 已由 Zeal live 測。剩餘 ISS-* changes_requested 仍等待 Zeal 在 PR #11 補送真人 review。"
     }
   ]
 }
