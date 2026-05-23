@@ -419,6 +419,10 @@ export async function completeReviewIssueIfReady(notion: NotionLikeClient, confi
   }
 
   const retest = await getRetestReadiness(notion, reviewIssue);
+  let retestNotifications = 0;
+  if (input.applyChanges && input.notify !== false) {
+    retestNotifications = await notifyRetestIfReady(notion, retest);
+  }
 
   return {
     applied: Boolean(input.applyChanges),
@@ -428,7 +432,24 @@ export async function completeReviewIssueIfReady(notion: NotionLikeClient, confi
     reviewIssueUrl: getUrl(reviewIssue),
     status: input.applyChanges ? "Tech Fixed" : status,
     retest,
+    retestNotifications,
   };
+}
+
+async function notifyRetestIfReady(notion: NotionLikeClient, retest: Record<string, any>): Promise<number> {
+  let notified = 0;
+  for (const hub of retest.featureHubs ?? []) {
+    // Do not notify when the Feature Hub relation is empty or stale; otherwise every
+    // isolated test card would look ready for retest.
+    if (!hub.readyForRetest || hub.totalReviewIssues === 0) continue;
+    const hubPage = await retrievePage(notion, hub.featureHubPageId);
+    const reviewers = hubPage.properties?.["Func. Reviewer"]?.people ?? [];
+    const assignees = hubPage.properties?.["指派給"]?.people ?? [];
+    const users = reviewers.length > 0 ? reviewers : assignees;
+    await addComment(notion, hub.featureHubPageId, users, "所有 Review Issue 都已完成修復，請重新進行 Function Review / retest。");
+    notified += 1;
+  }
+  return notified;
 }
 
 async function getRetestReadiness(notion: NotionLikeClient, reviewIssue: any): Promise<Record<string, any>> {
