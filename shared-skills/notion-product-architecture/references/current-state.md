@@ -1,6 +1,6 @@
 # Current State
 
-Last validated: `2026-05-21`
+Last validated: `2026-05-24`
 
 This file captures the currently confirmed product Notion architecture for this repo. It is based on:
 
@@ -15,6 +15,7 @@ Current understanding is high-confidence for the active workflow model.
 - `Sprint Backlog` and `Review Issue` were validated against the live data source schema directly on `2026-05-21`.
 - `Review Log` relationships remain consistent with earlier validated samples.
 - `Review Fix Task` still exists as a legacy database, but it is no longer part of the active workflow model.
+- Notion Worker-compatible Review Issue routing tools were implemented in `workers/notion-product-workflow` and live-tested through GitHub Actions run `26337196957`.
 
 ## Core databases
 
@@ -194,3 +195,19 @@ Do not use this mental model anymore:
   - one review producing many issues
   - one issue touching many repos without blindly fan-out to all repos
   - one feature spanning multiple repos with explicit repair scope
+
+## Worker / Agent implementation status
+
+- Worker project: `workers/notion-product-workflow`
+- Worker tools:
+  - `routeReviewIssue`
+  - `rerouteReviewIssue`
+  - `completeReviewIssueIfReady`
+- Live test evidence:
+  - GitHub Actions run `26337196957`
+  - Test Review Issue `ISS-203`
+  - Routed to Repo Execution `SB-2223` / `tool-imagecompressor`
+  - Wrote `Affected Repo Execution`, `Repair Routing Summary`, `Reopen Count=1`, `Resolved Repo Execution`
+  - Final status became `Tech Fixed`
+- Hosted Worker deploy still requires `ntn login` by an eligible workspace member.
+- Custom Agent trigger/access configuration still needs to be completed in Notion web/desktop UI.

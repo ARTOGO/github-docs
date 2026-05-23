@@ -242,27 +242,27 @@
         <div class="subtitle">github-docs Notion 自動化重構與部署：完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。</div>
       </div>
       <div class="timestamp">
-        <p>資料更新：2026-05-23T23:50:00+08:00</p>
-        <p>HTML 產生：2026-05-23T23:55:39+08:00</p>
+        <p>資料更新：2026-05-24T00:00:00+08:00</p>
+        <p>HTML 產生：2026-05-24T00:01:55+08:00</p>
       </div>
     </header>
 
     <section class="hero" aria-label="全局總覽">
       <div class="hero-grid">
         <div>
-          <span class="pill warning">需補驗證</span>
+          <span class="pill danger">需處理</span>
           <h2 style="margin-top: 16px;">同步 live schema 與知識庫路由</h2>
           <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
         </div>
         <div class="hero-card">
           <div class="label">整體進度</div>
-          <div class="metric-large">98%</div>
-          <div class="progress-track"><div class="progress-bar" style="width: 98%;"></div></div>
+          <div class="metric-large">100%</div>
+          <div class="progress-track"><div class="progress-bar" style="width: 100%;"></div></div>
         </div>
         <div class="hero-card">
           <div class="label">目前焦點</div>
           <div style="font-size: 22px; font-weight: 900; margin-bottom: 10px;">功能 F2 · 任務 T2.12</div>
-          <p>開始 Notion Worker / Agent implementation；先落地 Worker tools 與真實 Notion live test，Custom Agent UI 設定若需 workspace 授權則列為部署 blocker。</p>
+          <p>Notion Worker-compatible tools 已實作並用真實 Notion `ISS-203` live 測通過；Hosted Worker deploy 與 Custom Agent trigger 設定仍需 Notion CLI login / UI。</p>
         </div>
       </div>
     </section>
@@ -275,18 +275,18 @@
       </article>
       <article class="card">
         <div class="kpi-label">目前階段</div>
-        <div class="kpi-value">進行中</div>
+        <div class="kpi-value">卡住</div>
         <div class="kpi-note">實作 Notion Worker tools 與 Agent 設定指引</div>
       </article>
       <article class="card">
         <div class="kpi-label">阻塞項目</div>
-        <div class="kpi-value">0</div>
+        <div class="kpi-value">1</div>
         <div class="kpi-note">包含 blocked 任務與明確阻塞清單；enum 保留原文。</div>
       </article>
       <article class="card">
         <div class="kpi-label">風險等級</div>
-        <div class="kpi-value">中</div>
-        <div class="kpi-note">有完成但尚未驗證的工作，或仍有未覆蓋流程。</div>
+        <div class="kpi-value">高</div>
+        <div class="kpi-note">目前有阻塞或資料完整性警告，應先排除再宣稱完成。</div>
       </article>
     </section>
 
@@ -307,8 +307,8 @@
 
 <div class="milestone-row">
   <strong>同步 live schema 與知識庫路由</strong>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 96%;"></div></div>
-  <strong>96%</strong>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 99%;"></div></div>
+  <strong>99%</strong>
   <span class="pill active">進行中</span>
 </div>
 </div>
@@ -347,14 +347,14 @@
 
 <div class="feature-focus-card">
   <div>
-    <span class="pill warning">目前功能 · 有風險</span>
+    <span class="pill danger">目前功能 · 已阻塞</span>
     <h3>功能 F2：同步 live schema 與知識庫路由</h3>
     <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
   </div>
   <div class="feature-focus-meta">
-    <div class="feature-focus-metric"><small>進度</small><strong>96%</strong></div>
+    <div class="feature-focus-metric"><small>進度</small><strong>99%</strong></div>
     <div class="feature-focus-metric"><small>任務</small><strong>10/12</strong></div>
-    <div class="feature-focus-metric"><small>阻塞</small><strong>0</strong></div>
+    <div class="feature-focus-metric"><small>阻塞</small><strong>1</strong></div>
     <div class="feature-focus-metric"><small>焦點</small><strong>任務 T2.12</strong></div>
   </div>
 </div>
@@ -379,9 +379,9 @@
       <div class="feature-list-title">功能 F2：同步 live schema 與知識庫路由</div>
       <div class="feature-list-subtitle">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</div>
     </div>
-    <span class="pill yellow">96%</span>
+    <span class="pill yellow">99%</span>
   </div>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 96%;"></div></div>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 99%;"></div></div>
 </button>
 </div>
           </div>
@@ -558,7 +558,7 @@
 <article class="scope-task">
   <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
   <div class="task-meta">
-    <span class="pill active">進行中</span>
+    <span class="pill danger">卡住</span>
     <span class="pill blue">任務 T2.12</span>
   </div>
 </article>
@@ -826,17 +826,9 @@
   <p class="muted small">無任務</p>
 </section>
 
-<section class="mini-lane">
-  <div class="mini-lane-title">進行中 <span>1</span></div>
-
-<article class="task-card">
-  <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
-  <div class="task-meta">
-    <span class="pill purple">Worker / Agent</span>
-    <span class="pill active">進行中</span>
-  </div>
-</article>
-
+<section class="mini-lane empty">
+  <div class="mini-lane-title">進行中 <span>0</span></div>
+  <p class="muted small">無任務</p>
 </section>
 
 <section class="mini-lane">
@@ -852,9 +844,17 @@
 
 </section>
 
-<section class="mini-lane empty">
-  <div class="mini-lane-title">已阻塞 <span>0</span></div>
-  <p class="muted small">無任務</p>
+<section class="mini-lane">
+  <div class="mini-lane-title">已阻塞 <span>1</span></div>
+
+<article class="task-card">
+  <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
+  <div class="task-meta">
+    <span class="pill purple">Worker / Agent</span>
+    <span class="pill danger">卡住</span>
+  </div>
+</article>
+
 </section>
 
 <section class="mini-lane">
@@ -980,9 +980,9 @@
 
 <article class="management-card">
   <h4>Worker / Agent</h4>
-  <div class="kpi-value small-value">55%</div>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 55%;"></div></div>
-  <div class="kpi-note">1 未完成 / 0 已阻塞</div>
+  <div class="kpi-value small-value">85%</div>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 85%;"></div></div>
+  <div class="kpi-note">1 未完成 / 1 已阻塞</div>
 </article>
 </div></div>
       <div class="tab-panel timeline-panel">
@@ -1072,9 +1072,9 @@
 <div class="timeline-track">
   <div class="timeline-track-label">Worker / Agent<small>1 個任務</small></div>
 
-<div class="timeline-bar active" style="grid-column: 6 / 8;">
+<div class="timeline-bar danger" style="grid-column: 6 / 8;">
   實作 Notion Worker tools 與 Agent 設定指引
-  <small>進行中 · 55%</small>
+  <small>卡住 · 85%</small>
 </div>
 
 </div>
@@ -1110,22 +1110,22 @@
 <section class="card blocker-diagnosis">
   <div class="card-title">
     <h3>阻塞診斷</h3>
-    <span class="pill green">無阻塞</span>
+    <span class="pill red">待處理</span>
   </div>
   <div class="blocker-grid">
     <article class="blocker-card">
       <h4>目前阻塞節點</h4>
       <dl class="blocker-field-grid">
-        <dt>節點</dt><dd>目前沒有已阻塞任務</dd>
-        <dt>卡住原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
-        <dt>受阻原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
+        <dt>節點</dt><dd>Worker / Agent · 實作 Notion Worker tools 與 Agent 設定指引</dd>
+        <dt>卡住原因</dt><dd>Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI，現有 MCP / API 無法直接建立 Custom Agent triggers。</dd>
+        <dt>受阻原因</dt><dd>Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI，現有 MCP / API 無法直接建立 Custom Agent triggers。</dd>
         <dt>負責人</dt><dd>待指定</dd>
         <dt>解除期限</dt><dd>待指定</dd>
       </dl>
     </article>
     <article class="blocker-card">
       <h4>影響鏈</h4>
-      <div class="impact-chain">無啟用中的影響鏈</div>
+      <div class="impact-chain">實作 Notion Worker tools 與 Agent 設定指引 → 下游任務 → 驗證 → 上線就緒</div>
       <h4 style="margin-top: 14px;">解除阻塞清單</h4>
       <div class="unblock-list"><div class="unblock-item"><span class="unblock-num">1</span><span>補齊卡住原因與負責人</span></div><div class="unblock-item"><span class="unblock-num">2</span><span>確認受影響任務 / 工作流</span></div><div class="unblock-item"><span class="unblock-num">3</span><span>定義解除阻塞所需決策或行動</span></div><div class="unblock-item"><span class="unblock-num">4</span><span>解除後重新跑驗證並更新證據</span></div></div>
     </article>
@@ -1149,7 +1149,7 @@
       <h3>Notion 自動化新主流程定稿</h3>
       <p>以 Review Issue 直修模型取代 Fix Task，並把 Worker / Custom Agent / GitHub webhook 的責任邊界定清楚。</p>
     </div>
-    <strong>98%</strong>
+    <strong>100%</strong>
   </div>
   <ol class="outcome-list">
 <li>
@@ -1158,7 +1158,7 @@
     <strong>可直接實作的 migration spec</strong>
     <em>F1 整理最終 migration spec, F2 同步 live schema 與知識庫路由</em>
   </div>
-  <b>98%</b>
+  <b>100%</b>
 </li>
 </ol>
 </article>
@@ -1207,9 +1207,9 @@
 <div class="status-row tone-active">
   <div class="status-row-label">
     <span>進行中</span>
-    <strong>1</strong>
+    <strong>0</strong>
   </div>
-  <div class="mini-bar"><span style="width: 6%"></span></div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
 </div>
 
 <div class="status-row tone-warning">
@@ -1223,9 +1223,9 @@
 <div class="status-row tone-danger">
   <div class="status-row-label">
     <span>卡住</span>
-    <strong>0</strong>
+    <strong>1</strong>
   </div>
-  <div class="mini-bar"><span style="width: 0%"></span></div>
+  <div class="mini-bar"><span style="width: 6%"></span></div>
 </div>
 
 <div class="status-row tone-neutral">
@@ -1245,10 +1245,10 @@
 </div>
 </div>
             <div><h4>下一步</h4><ol class="action-list">
-<li class="action-item tone-active">
-  <span>進行中</span>
+<li class="action-item tone-danger">
+  <span>卡住</span>
   <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
-  <em>功能 F2 · 任務 T2.12 · 55%</em>
+  <em>功能 F2 · 任務 T2.12 · 85%</em>
 </li>
 
 <li class="action-item tone-warning">
@@ -1344,7 +1344,7 @@
   <div class="card-title drawer-card-title">
     <h3>任務細節抽屜</h3>
     <div class="drawer-title-actions">
-      <span class="pill active">進行中</span>
+      <span class="pill danger">卡住</span>
       <button type="button" class="drawer-close" data-drawer-close aria-label="收合任務細節">收合</button>
     </div>
   </div>
@@ -1352,7 +1352,7 @@
     <div class="detail-label">功能 F2 · 任務 T2.12</div>
     <div class="detail-value"><strong>實作 Notion Worker tools 與 Agent 設定指引</strong></div>
   </div>
-  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill yellow" style="width: 55%;"></div></div><span>55%</span></div>
+  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill yellow" style="width: 85%;"></div></div><span>85%</span></div>
   <div class="detail-block-static">
     <div class="detail-label">進度拆解</div>
     <div>
@@ -1364,14 +1364,14 @@
 
 <div class="progress-detail-row">
   <strong>實作</strong>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 55%;"></div></div>
-  <span>55%</span>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 85%;"></div></div>
+  <span>85%</span>
 </div>
 
 <div class="progress-detail-row">
   <strong>審查</strong>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 55%;"></div></div>
-  <span>55%</span>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 80%;"></div></div>
+  <span>80%</span>
 </div>
 
 <div class="progress-detail-row">
@@ -1401,7 +1401,7 @@
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗證證據</div>
-    <div class="detail-value"><ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；3 個 unit tests 通過。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li></ul></div>
+    <div class="detail-value"><ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；3 個 unit tests 通過。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li><li><strong>github-actions</strong>: github-docs run 26337196957 <span>Notion Worker live test 成功：建立 `ISS-203`，reroute 到 `SB-2223` / `tool-imagecompressor`，寫入 affected/routing/reopen count/resolved，最後狀態為 `Tech Fixed`。</span></li><li><strong>notion</strong>: Notion 產品開發流程自動化 <span>已在 Notion 正式流程頁補上 Worker tools、live test run、ISS-203 證據與 Custom Agent UI 設定 gate。</span></li></ul></div>
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗收條件 / 連結 / 最新更新</div>
@@ -1434,7 +1434,7 @@
       <p>以 Review Issue 直修模型取代 Fix Task，並把 Worker / Custom Agent / GitHub webhook 的責任邊界定清楚。</p>
     </div>
     <div class="goal-percent">
-      <strong>98%</strong>
+      <strong>100%</strong>
       <span>最終目標進度</span>
     </div>
   </div>
@@ -1501,9 +1501,9 @@
       <h3>同步 live schema 與知識庫路由</h3>
       <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
     </div>
-    <strong>96%</strong>
+    <strong>99%</strong>
   </div>
-  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 8%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 8%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 8%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 8%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 8%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 8%" title="用真實 Notion 資料本地 dry-run 新流程"></span><span class="road-segment tone-success" style="width: 8%" title="真實 Notion + GitHub Actions 完整流程測試"></span><span class="road-segment tone-success" style="width: 8%" title="建立 Notion 自動化流程測試狀態文件"></span><span class="road-segment tone-success" style="width: 8%" title="補測已實作 GitHub Actions live flow"></span><span class="road-segment tone-success" style="width: 8%" title="補測 reviewer event、Notion mention 與 AI repair skill E2E"></span><span class="road-segment tone-success" style="width: 8%" title="建立圖像化 flow map 與狀態矩陣"></span><span class="road-segment tone-active" style="width: 8%" title="實作 Notion Worker tools 與 Agent 設定指引"></span></div>
+  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 8%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 8%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 8%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 8%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 8%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 8%" title="用真實 Notion 資料本地 dry-run 新流程"></span><span class="road-segment tone-success" style="width: 8%" title="真實 Notion + GitHub Actions 完整流程測試"></span><span class="road-segment tone-success" style="width: 8%" title="建立 Notion 自動化流程測試狀態文件"></span><span class="road-segment tone-success" style="width: 8%" title="補測已實作 GitHub Actions live flow"></span><span class="road-segment tone-success" style="width: 8%" title="補測 reviewer event、Notion mention 與 AI repair skill E2E"></span><span class="road-segment tone-success" style="width: 8%" title="建立圖像化 flow map 與狀態矩陣"></span><span class="road-segment tone-danger" style="width: 8%" title="實作 Notion Worker tools 與 Agent 設定指引"></span></div>
   <div class="feature-rationale">
     <div>
       <h4>為何必要</h4>
@@ -1572,8 +1572,8 @@
   <strong>建立圖像化 flow map 與狀態矩陣</strong>
 </li>
 
-<li class="work-chip tone-active">
-  <span>進行中</span>
+<li class="work-chip tone-danger">
+  <span>卡住</span>
   <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
 </li>
 </ul>
@@ -1728,7 +1728,7 @@
   <summary>
     <span>功能 F2</span>
     <strong>同步 live schema 與知識庫路由</strong>
-    <em>96%</em>
+    <em>99%</em>
   </summary>
   <p class="detail-summary">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
   <div class="tasks">
@@ -2018,17 +2018,17 @@
 </article>
 
 
-<article class="task task-doing">
+<article class="task task-blocked">
   <div class="task-head">
     <div>
       <p class="eyebrow">任務 T2.12</p>
       <h4>實作 Notion Worker tools 與 Agent 設定指引</h4>
     </div>
-    <span class="status">進行中</span>
+    <span class="status">卡住</span>
   </div>
   <div class="task-progress">
-    <span>55%</span>
-    <div class="bar" aria-label="進度"><span style="width: 55%"></span></div>
+    <span>85%</span>
+    <div class="bar" aria-label="進度"><span style="width: 85%"></span></div>
   </div>
   <div class="task-grid">
     <section>
@@ -2037,10 +2037,10 @@
     </section>
     <section>
       <h5>驗證證據</h5>
-      <ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；3 個 unit tests 通過。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li></ul>
+      <ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；3 個 unit tests 通過。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li><li><strong>github-actions</strong>: github-docs run 26337196957 <span>Notion Worker live test 成功：建立 `ISS-203`，reroute 到 `SB-2223` / `tool-imagecompressor`，寫入 affected/routing/reopen count/resolved，最後狀態為 `Tech Fixed`。</span></li><li><strong>notion</strong>: Notion 產品開發流程自動化 <span>已在 Notion 正式流程頁補上 Worker tools、live test run、ISS-203 證據與 Custom Agent UI 設定 gate。</span></li></ul>
     </section>
   </div>
-  <p class="notes">已完成 Worker-compatible tool implementation 與本地測試；本地 NOTION_TOKEN 對 Review Issue DB 無權限，真實 Notion live test 改由 GitHub Actions 使用既有 NOTION_API_KEY secret 執行。</p>
+  <p class="notes">已完成 Worker-compatible tool implementation、本地測試、GitHub Actions live test、Notion 正式流程頁更新，以及 Agent 設定文件。route / reroute / complete tool 已能對真實 Notion 寫入。</p>
 </article>
 </div>
 </details>

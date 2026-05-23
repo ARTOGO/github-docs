@@ -1,6 +1,6 @@
 # Notion 自動化 Flow Map
 
-最後更新：2026-05-23 18:58 Asia/Taipei
+最後更新：2026-05-24 00:00 Asia/Taipei
 
 這份文件用圖像化方式呈現目前 Notion / GitHub / AI repair 自動化流程，並標註每個節點的實作與測試狀態。
 
@@ -51,7 +51,7 @@ flowchart TD
   userAI["使用者端 AI repair skill<br/>fix-sprint-review-issues<br/>已實作 + 已 live 測核心 E2E"] --> notion
   userAI --> productRepos
   ghActions --> notion
-  notionAgent["Notion Custom Agent<br/>目標觸發層<br/>未實作 + 未測"] -.-> worker["Notion Worker tools/webhooks<br/>routing / reroute / retest notification<br/>未實作 + 未測"]
+  notionAgent["Notion Custom Agent<br/>目標觸發層<br/>需 UI 設定"] -.-> worker["Notion Worker tools<br/>route / reroute / complete<br/>已實作 + 已 live 測 tool"]
   worker -.-> notion
   worker -.-> productRepos
   legacy["Fix Task fan-out / AI Dev Prompt / AI code review<br/>已移除"] -.-> notion
@@ -61,9 +61,9 @@ flowchart TD
   classDef todo fill:#e5e7eb,stroke:#6b7280,color:#374151,stroke-width:2px
   classDef removed fill:#111827,stroke:#111827,color:#ffffff,stroke-width:2px
 
-  class ghActions,userAI done
+  class ghActions,userAI,worker done
   class productRepos partial
-  class notionAgent,worker todo
+  class notionAgent todo
   class legacy removed
 ```
 
@@ -171,29 +171,29 @@ flowchart TD
   class sprintEntry partial
 ```
 
-## 6. Notion Worker / Agent 目標 Flow
+## 6. Notion Worker / Agent Flow
 
-這是下一階段架構，不是現在 live runtime。
+Worker tools 已在 repo 中實作，並透過 GitHub Actions run `26337196957` 對真實 Notion `ISS-203` 跑過 route / reroute / complete side-effect test。Notion Custom Agent trigger/access 仍需在 Notion UI 設定。
 
 ```mermaid
 flowchart TD
-  triggerCreate["Notion trigger<br/>Review Issue created/opened<br/>未實作 + 未測"] --> routeTool["Worker tool: route_review_issue<br/>判斷 affected repos<br/>未實作 + 未測"]
-  routeTool --> writeAffected["寫回 Affected Repo Execution / Repair Routing Summary<br/>未實作 + 未測"]
-  writeAffected --> notifyDev["comment tag repo developer / assignee<br/>未實作 + 未測"]
-  triggerReopen["Notion trigger<br/>Review Issue reopened<br/>未實作 + 未測"] --> reroute["Worker reroute<br/>clear Resolved / PR summary / Reopen Count +1<br/>未實作 + 未測"]
+  triggerCreate["Notion trigger<br/>Review Issue created/opened<br/>需 Custom Agent UI 設定"] --> routeTool["Worker tool: routeReviewIssue<br/>判斷 affected repos<br/>已實作 + 已 live 測 tool"]
+  routeTool --> writeAffected["寫回 Affected Repo Execution / Repair Routing Summary<br/>已實作 + 已 live 測"]
+  writeAffected --> notifyDev["comment tag repo developer / assignee<br/>已實作 + 已 live 測"]
+  triggerReopen["Notion trigger<br/>Review Issue reopened<br/>需 Custom Agent UI 設定"] --> reroute["Worker rerouteReviewIssue<br/>clear Resolved / PR summary / Reopen Count +1<br/>已實作 + 已 live 測 tool"]
   reroute --> writeAffected
-  githubWebhook["GitHub webhook / PR events<br/>可考慮從 Actions 遷入 Worker<br/>未實作 + 未測"] --> completeTool["Worker tool: complete_review_issue_if_ready<br/>部分邏輯目前由 GitHub Actions live 負責"]
-  completeTool --> issueDone["Review Issue -> Tech Fixed when all affected resolved<br/>GitHub Actions 已實作 + 已 live 測<br/>Worker 未實作"]
-  issueDone --> retestNotify["Feature Hub 全部 issue 非 Open/Fixing<br/>通知 tester retest<br/>未實作 + 未測"]
+  githubWebhook["GitHub webhook / PR events<br/>目前仍由 Actions 負責"] --> completeTool["Worker tool: completeReviewIssueIfReady<br/>已實作 + 已 live 測 tool"]
+  completeTool --> issueDone["Review Issue -> Tech Fixed when all affected resolved<br/>已實作 + 已 live 測"]
+  issueDone --> retestNotify["Feature Hub 全部 issue 非 Open/Fixing<br/>通知 tester retest<br/>guard 已實作，通知未完整 live 測"]
   branchTool["Worker tool: create_execution_branch<br/>未實作 + 未測"] -.-> currentBranch["目前由 GitHub Actions branch workflow 負責<br/>已實作 + 已 live 測"]
 
   classDef done fill:#dcfce7,stroke:#15803d,color:#14532d,stroke-width:2px
   classDef partial fill:#fef9c3,stroke:#ca8a04,color:#713f12,stroke-width:2px
   classDef todo fill:#e5e7eb,stroke:#6b7280,color:#374151,stroke-width:2px
 
-  class triggerCreate,routeTool,writeAffected,notifyDev,triggerReopen,reroute,githubWebhook,retestNotify,branchTool todo
-  class completeTool,issueDone partial
-  class currentBranch done
+  class routeTool,writeAffected,notifyDev,reroute,completeTool,issueDone,currentBranch done
+  class retestNotify partial
+  class triggerCreate,triggerReopen,githubWebhook,branchTool todo
 ```
 
 ## 7. 已移除 Legacy Flow
@@ -235,7 +235,9 @@ flowchart TD
 | Review Issue multi-repo completion | 已實作 | 已 live 測 | 可用。 |
 | Review Issue terminal status guard | 已實作 | 已 live 測 | 可用。 |
 | 使用者端 AI repair skill E2E | 已實作 | 已 live 測核心 E2E | 可用；Sprint URL 入口尚未單獨另跑，但 relation resolve 已由 ISS-201 覆蓋。 |
-| Notion Worker route / reroute / retest notify | 未實作 | 未測 | 下一階段，不可宣稱已完成。 |
+| Notion Worker route / reroute / complete tools | 已實作 | 已 live 測 tool | run `26337196957` 建立 `ISS-203`，寫入 affected/routing/reopen count/resolved，最後 `Tech Fixed`。 |
+| Notion Worker retest notify | 部分已實作 | 未完整 live 測通知 | readiness guard 已實作；需要有完整 Feature Hub review issue relation 才會留言，避免測試卡誤通知。 |
+| Notion Custom Agent triggers / access | 未完成 | 未測 | 需在 Notion UI 建立 `Artogo Review Issue Router` 並掛 Worker tools。 |
 | Worker `create_execution_branch` | 未實作 | 未測 | 目前由 GitHub Actions branch workflow 負責。 |
 | Fix Task fan-out / Fix Branch / Fix Task completion | 已移除 | 不適用 | 不再是 active path。 |
 | AI code review reusable workflow | 已移除 | 不適用 | 不再由 push / PR 觸發。 |

@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-23T23:50:00+08:00",
+  "updated_at": "2026-05-24T00:00:00+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -13,7 +13,7 @@
   "current_focus": {
     "feature_id": "F2",
     "task_id": "T2.12",
-    "summary": "開始 Notion Worker / Agent implementation；先落地 Worker tools 與真實 Notion live test，Custom Agent UI 設定若需 workspace 授權則列為部署 blocker。"
+    "summary": "Notion Worker-compatible tools 已實作並用真實 Notion `ISS-203` live 測通過；Hosted Worker deploy 與 Custom Agent trigger 設定仍需 Notion CLI login / UI。"
   },
   "conversation_changes": [
     {
@@ -656,9 +656,9 @@
         {
           "id": "T2.12",
           "title": "實作 Notion Worker tools 與 Agent 設定指引",
-          "status": "doing",
+          "status": "blocked",
           "workstream": "Worker / Agent",
-          "progress_percent": 55,
+          "progress_percent": 85,
           "definition_of_done": [
             "Worker tools 可執行 route / reroute / complete Review Issue",
             "本地 typecheck 與 unit tests 通過",
@@ -672,8 +672,8 @@
             "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-worker-live-test.yml",
             "/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md"
           ],
-          "notes": "已完成 Worker-compatible tool implementation 與本地測試；本地 NOTION_TOKEN 對 Review Issue DB 無權限，真實 Notion live test 改由 GitHub Actions 使用既有 NOTION_API_KEY secret 執行。",
-          "blocker": "Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI。",
+          "notes": "已完成 Worker-compatible tool implementation、本地測試、GitHub Actions live test、Notion 正式流程頁更新，以及 Agent 設定文件。route / reroute / complete tool 已能對真實 Notion 寫入。",
+          "blocker": "Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI，現有 MCP / API 無法直接建立 Custom Agent triggers。",
           "evidence": [
             {
               "type": "command",
@@ -689,6 +689,16 @@
               "type": "command",
               "ref": "../../.tools/ntn workers list --json",
               "result": "Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "github-docs run 26337196957",
+              "result": "Notion Worker live test 成功：建立 `ISS-203`，reroute 到 `SB-2223` / `tool-imagecompressor`，寫入 affected/routing/reopen count/resolved，最後狀態為 `Tech Fixed`。"
+            },
+            {
+              "type": "notion",
+              "ref": "Notion 產品開發流程自動化",
+              "result": "已在 Notion 正式流程頁補上 Worker tools、live test run、ISS-203 證據與 Custom Agent UI 設定 gate。"
             }
           ]
         }
@@ -712,9 +722,10 @@
     }
   ],
   "next_actions": [
-    "開始 Notion Worker / Agent implementation 與 trigger 設定",
+    "由 workspace member 執行 `ntn login`，部署 hosted Notion Worker",
+    "在 Notion UI 建立 `Artogo Review Issue Router` Custom Agent，掛上 Worker tools 與 Review Issue triggers",
     "若要清理測試物件，另行關閉 tool-imagecompressor PR #10 / #11 並把測試卡標記為終態",
-    "Worker 實作時補上 route / reroute / retest notification 的 live test evidence"
+    "Custom Agent trigger 完成後，再用新建 Review Issue 觸發一次端到端自動 routing 測試"
   ],
   "not_covered": [
     {

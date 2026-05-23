@@ -1,16 +1,17 @@
 # Notion Worker / Custom Agent Setup
 
-Last updated: 2026-05-23
+Last updated: 2026-05-24
 
 This document is the handoff for deploying the Artogo Notion Worker and attaching it to a Notion Custom Agent.
 
 ## Current Status
 
-Implemented in repo:
+Implemented and tested in repo:
 
 - Worker-compatible tools under `workers/notion-product-workflow`.
 - Manual live-test workflow: `.github/workflows/notion-worker-live-test.yml`.
 - Local unit/type tests for deterministic Review Issue routing and completion logic.
+- Latest live test: GitHub Actions run `26337196957` created `ISS-203`, routed it to `SB-2223` / `tool-imagecompressor`, wrote `Reopen Count=1`, then marked the issue `Tech Fixed`.
 
 Blocked outside repo automation:
 
@@ -103,3 +104,11 @@ Expected result:
 - A `[TEST][Codex] Worker routing live test ...` Review Issue is created.
 - `rerouteReviewIssue` writes `Affected Repo Execution`, clears old repair state, increments `Reopen Count`, and comments with a mention.
 - `completeReviewIssueIfReady` moves the test issue to `Tech Fixed`.
+
+Verified result on 2026-05-23:
+
+- Run: `26337196957`
+- Test issue: `ISS-203`
+- Final status: `Tech Fixed`
+- Affected / resolved repo execution: `SB-2223`
+- Notion comments: routing comment with developer mention, then completion comment.
