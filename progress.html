@@ -242,8 +242,8 @@
         <div class="subtitle">github-docs Notion 自動化重構與部署：完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。</div>
       </div>
       <div class="timestamp">
-        <p>資料更新：2026-05-22T22:22:50+08:00</p>
-        <p>HTML 產生：2026-05-22T22:24:10+08:00</p>
+        <p>資料更新：2026-05-23T09:23:18+08:00</p>
+        <p>HTML 產生：2026-05-23T09:24:55+08:00</p>
       </div>
     </header>
 
@@ -262,7 +262,7 @@
         <div class="hero-card">
           <div class="label">目前焦點</div>
           <div style="font-size: 22px; font-weight: 900; margin-bottom: 10px;">功能 F2 · 任務 T2.10</div>
-          <p>已確認 Zeal 的 PR #10 COMMENTED 與 PR #11 APPROVED review event 都成功觸發 Notion sync；剩餘 SB changes_requested/approved 與 ISS changes_requested 等 Zeal 補送。</p>
+          <p>已確認 Zeal 的 PR #10 CHANGES_REQUESTED review event 成功觸發 Notion sync；剩餘 SB approved 與 ISS changes_requested 等 Zeal 補送。</p>
         </div>
       </div>
     </section>
@@ -307,9 +307,9 @@
 
 <div class="milestone-row">
   <strong>同步 live schema 與知識庫路由</strong>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 99%;"></div></div>
-  <strong>99%</strong>
-  <span class="pill active">進行中</span>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <strong>100%</strong>
+  <span class="pill success">已驗證</span>
 </div>
 </div>
         </section>
@@ -352,7 +352,7 @@
     <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
   </div>
   <div class="feature-focus-meta">
-    <div class="feature-focus-metric"><small>進度</small><strong>99%</strong></div>
+    <div class="feature-focus-metric"><small>進度</small><strong>100%</strong></div>
     <div class="feature-focus-metric"><small>任務</small><strong>9/11</strong></div>
     <div class="feature-focus-metric"><small>阻塞</small><strong>1</strong></div>
     <div class="feature-focus-metric"><small>焦點</small><strong>任務 T2.10</strong></div>
@@ -379,9 +379,9 @@
       <div class="feature-list-title">功能 F2：同步 live schema 與知識庫路由</div>
       <div class="feature-list-subtitle">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</div>
     </div>
-    <span class="pill yellow">99%</span>
+    <span class="pill green">100%</span>
   </div>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 99%;"></div></div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
 </button>
 </div>
           </div>
@@ -736,7 +736,7 @@
 
 <tr>
   <td>未覆蓋</td>
-  <td>{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested 已 live 測；SB-* commented 已由 Zeal `pull_request_review COMMENTED` live 測；ISS-* repair PR commented 已由 Gemini `pull_request_review COMMENTED` live 測；ISS-* approved 已由 Zeal `pull_request_review APPROVED` live 測。剩餘 SB-* changes_requested / approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。&#x27;}</td>
+  <td>{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested 已 live 測；SB-* commented / changes_requested 已由 Zeal live 測；ISS-* repair PR commented 已由 Gemini live 測；ISS-* approved 已由 Zeal live 測。剩餘 SB-* approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。&#x27;}</td>
   <td><span class="pill yellow">待處理</span></td>
 </tr>
 </tbody>
@@ -958,8 +958,8 @@
 
 <article class="management-card">
   <h4>Ops / Verification</h4>
-  <div class="kpi-value small-value">98%</div>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 98%;"></div></div>
+  <div class="kpi-value small-value">99%</div>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 99%;"></div></div>
   <div class="kpi-note">1 未完成 / 1 已阻塞</div>
 </article>
 </div></div>
@@ -1042,7 +1042,7 @@
 
 <div class="timeline-bar danger" style="grid-column: 6 / 8;">
   補測 reviewer event、Notion mention 與 AI repair skill E2E
-  <small>卡住 · 92%</small>
+  <small>卡住 · 96%</small>
 </div>
 
 </div>
@@ -1069,7 +1069,7 @@
 
 <tr>
   <td>未覆蓋</td>
-  <td>{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested 已 live 測；SB-* commented 已由 Zeal `pull_request_review COMMENTED` live 測；ISS-* repair PR commented 已由 Gemini `pull_request_review COMMENTED` live 測；ISS-* approved 已由 Zeal `pull_request_review APPROVED` live 測。剩餘 SB-* changes_requested / approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。&#x27;}</td>
+  <td>{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested 已 live 測；SB-* commented / changes_requested 已由 Zeal live 測；ISS-* repair PR commented 已由 Gemini live 測；ISS-* approved 已由 Zeal live 測。剩餘 SB-* approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。&#x27;}</td>
   <td><span class="pill yellow">待處理</span></td>
 </tr>
 </tbody>
@@ -1091,8 +1091,8 @@
       <h4>目前阻塞節點</h4>
       <dl class="blocker-field-grid">
         <dt>節點</dt><dd>Ops / Verification · 補測 reviewer event、Notion mention 與 AI repair skill E2E</dd>
-        <dt>卡住原因</dt><dd>等待 Zeal 在 PR #10 送出 SB-* changes_requested / approved，並在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。</dd>
-        <dt>受阻原因</dt><dd>等待 Zeal 在 PR #10 送出 SB-* changes_requested / approved，並在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。</dd>
+        <dt>卡住原因</dt><dd>等待 Zeal 在 PR #10 送出 SB-* approved，並在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。</dd>
+        <dt>受阻原因</dt><dd>等待 Zeal 在 PR #10 送出 SB-* approved，並在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。</dd>
         <dt>負責人</dt><dd>待指定</dd>
         <dt>解除期限</dt><dd>待指定</dd>
       </dl>
@@ -1222,7 +1222,7 @@
 <li class="action-item tone-danger">
   <span>卡住</span>
   <strong>補測 reviewer event、Notion mention 與 AI repair skill E2E</strong>
-  <em>功能 F2 · 任務 T2.10 · 92%</em>
+  <em>功能 F2 · 任務 T2.10 · 96%</em>
 </li>
 
 <li class="action-item tone-warning">
@@ -1231,7 +1231,7 @@
   <em>功能 F2 · 任務 T2.1 · 100%</em>
 </li>
 </ol></div>
-            <div><h4>風險 / 缺口</h4><ul><li>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested 已 live 測；SB-* commented 已由 Zeal `pull_request_review COMMENTED` live 測；ISS-* repair PR commented 已由 Gemini `pull_request_review COMMENTED` live 測；ISS-* approved 已由 Zeal `pull_request_review APPROVED` live 測。剩餘 SB-* changes_requested / approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。&#x27;}</li></ul></div>
+            <div><h4>風險 / 缺口</h4><ul><li>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;GitHub review event live test&#x27;, &#x27;reason&#x27;: &#x27;review_requested 已 live 測；SB-* commented / changes_requested 已由 Zeal live 測；ISS-* repair PR commented 已由 Gemini live 測；ISS-* approved 已由 Zeal live 測。剩餘 SB-* approved 與 ISS-* changes_requested 仍等待 Zeal 在 PR #10 / #11 補送真人 review。&#x27;}</li></ul></div>
           </div>
         </section>
       </div>
@@ -1326,7 +1326,7 @@
     <div class="detail-label">功能 F2 · 任務 T2.10</div>
     <div class="detail-value"><strong>補測 reviewer event、Notion mention 與 AI repair skill E2E</strong></div>
   </div>
-  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill yellow" style="width: 92%;"></div></div><span>92%</span></div>
+  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill yellow" style="width: 96%;"></div></div><span>96%</span></div>
   <div class="detail-block-static">
     <div class="detail-label">進度拆解</div>
     <div>
@@ -1338,8 +1338,8 @@
 
 <div class="progress-detail-row">
   <strong>實作</strong>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 92%;"></div></div>
-  <span>92%</span>
+  <div class="mini-track"><div class="mini-fill yellow" style="width: 96%;"></div></div>
+  <span>96%</span>
 </div>
 
 <div class="progress-detail-row">
@@ -1375,7 +1375,7 @@
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗證證據</div>
-    <div class="detail-value"><ul class="evidence"><li><strong>github-actions</strong>: tool-imagecompressor branch / PR sync runs 26282142330, 26282194741, 26282238457 <span>SB-2223 branch 建立後 Notion comment mention Zeal Lin；PR #10 opened 進 TECH REVIEW；review_requested 從 DEV IN PROGRESS 回 TECH REVIEW 並 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor repair PR sync runs 26282312397, 26282354736 <span>ISS-200 / PR #11 opened 後狀態 Fixing 並 mention Zeal Lin；review_requested 維持 Fixing 並再次 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor run 26282409153 and github-docs cascade run 26282501635 <span>SB-2223 單卡 FUNC REVIEW FAILED rollback 與 SB-2222 Feature Hub cascade 都回 DEV IN PROGRESS，並在 Notion child comment mention Zeal Lin。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #13 and runs 26282892876, 26282931319, 26282986105 <span>SB-2224 無 child tech reviewer 時從 parent SB-2222 繼承 Zeal Lin，PR opened sync 成功 mention parent reviewer；closed-not-merged 後狀態回 DEV IN PROGRESS。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 / #11 <span>兩個 PR 目前 open 且 review request 指向 `zeallin`；已在 PR comment tag Zeal 說明依序送出 Comment、Request changes、Approve。</span></li><li><strong>github-actions</strong>: ISS-201 with tool-imagecompressor PR #12 / #14 / #15 / #16 and runs 26282735804, 26282770577, 26282808528, 26283054976, 26283144472, 26283144522, 26283215554, 26283307702, 26283299721, 26283432982, 26283550987 <span>使用者端 AI repair skill E2E 完成：判斷只修 tool-imagecompressor，寫回 Affected / Resolved Repo Execution 與 Repair Routing Summary，建立 fix/ISS-201 branch，修 README，跑 prettier / diff check，PR merge 後 ISS-201 變 Tech Fixed；Gemini COMMENTED review path 也已由 PR #12/#14/#15 live 測。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #10 pull_request_review run 26292164189 <span>Zeal Lin `COMMENTED` review 觸發成功；log 顯示 review_state=commented，Notion `SB-2223` 變 `DEV IN PROGRESS`，並新增 mention comment：「Tech Reviewer 有留言需要回應」。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #11 pull_request_review run 26292193861 <span>Zeal Lin `APPROVED` review 觸發成功；log 顯示 `Approved -&gt; waiting for merge`，Notion `ISS-200` 維持 `Fixing` 且沒有新增 comment，符合 approved 不改狀態設計。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 comment 4519545792 and PR #11 comment 4519545774 <span>已重新 tag/request Zeal：PR #10 補 SB changes_requested / approved；PR #11 補 ISS changes_requested。</span></li></ul></div>
+    <div class="detail-value"><ul class="evidence"><li><strong>github-actions</strong>: tool-imagecompressor branch / PR sync runs 26282142330, 26282194741, 26282238457 <span>SB-2223 branch 建立後 Notion comment mention Zeal Lin；PR #10 opened 進 TECH REVIEW；review_requested 從 DEV IN PROGRESS 回 TECH REVIEW 並 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor repair PR sync runs 26282312397, 26282354736 <span>ISS-200 / PR #11 opened 後狀態 Fixing 並 mention Zeal Lin；review_requested 維持 Fixing 並再次 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor run 26282409153 and github-docs cascade run 26282501635 <span>SB-2223 單卡 FUNC REVIEW FAILED rollback 與 SB-2222 Feature Hub cascade 都回 DEV IN PROGRESS，並在 Notion child comment mention Zeal Lin。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #13 and runs 26282892876, 26282931319, 26282986105 <span>SB-2224 無 child tech reviewer 時從 parent SB-2222 繼承 Zeal Lin，PR opened sync 成功 mention parent reviewer；closed-not-merged 後狀態回 DEV IN PROGRESS。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 / #11 <span>兩個 PR 目前 open 且 review request 指向 `zeallin`；已在 PR comment tag Zeal 說明依序送出 Comment、Request changes、Approve。</span></li><li><strong>github-actions</strong>: ISS-201 with tool-imagecompressor PR #12 / #14 / #15 / #16 and runs 26282735804, 26282770577, 26282808528, 26283054976, 26283144472, 26283144522, 26283215554, 26283307702, 26283299721, 26283432982, 26283550987 <span>使用者端 AI repair skill E2E 完成：判斷只修 tool-imagecompressor，寫回 Affected / Resolved Repo Execution 與 Repair Routing Summary，建立 fix/ISS-201 branch，修 README，跑 prettier / diff check，PR merge 後 ISS-201 變 Tech Fixed；Gemini COMMENTED review path 也已由 PR #12/#14/#15 live 測。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #10 pull_request_review run 26292164189 <span>Zeal Lin `COMMENTED` review 觸發成功；log 顯示 review_state=commented，Notion `SB-2223` 變 `DEV IN PROGRESS`，並新增 mention comment：「Tech Reviewer 有留言需要回應」。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #11 pull_request_review run 26292193861 <span>Zeal Lin `APPROVED` review 觸發成功；log 顯示 `Approved -&gt; waiting for merge`，Notion `ISS-200` 維持 `Fixing` 且沒有新增 comment，符合 approved 不改狀態設計。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 comment 4519545792 and PR #11 comment 4519545774 <span>已重新 tag/request Zeal：PR #10 補 SB changes_requested / approved；PR #11 補 ISS changes_requested。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #10 pull_request_review run 26319498585 <span>Zeal Lin `CHANGES_REQUESTED` review 觸發成功；log 顯示 review_state=changes_requested，Notion `SB-2223` 維持 `DEV IN PROGRESS`，並新增 mention comment：「Tech Review 未通過」。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 comment 4523715012 <span>已通知 Zeal：PR #10 Request changes 已驗證成功，接著請送 PR #10 Approve。</span></li></ul></div>
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗收條件 / 連結 / 最新更新</div>
@@ -1475,7 +1475,7 @@
       <h3>同步 live schema 與知識庫路由</h3>
       <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
     </div>
-    <strong>99%</strong>
+    <strong>100%</strong>
   </div>
   <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 9%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 9%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 9%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 9%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 9%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 9%" title="用真實 Notion 資料本地 dry-run 新流程"></span><span class="road-segment tone-success" style="width: 9%" title="真實 Notion + GitHub Actions 完整流程測試"></span><span class="road-segment tone-success" style="width: 9%" title="建立 Notion 自動化流程測試狀態文件"></span><span class="road-segment tone-success" style="width: 9%" title="補測已實作 GitHub Actions live flow"></span><span class="road-segment tone-danger" style="width: 9%" title="補測 reviewer event、Notion mention 與 AI repair skill E2E"></span><span class="road-segment tone-success" style="width: 9%" title="建立圖像化 flow map 與狀態矩陣"></span></div>
   <div class="feature-rationale">
@@ -1697,7 +1697,7 @@
   <summary>
     <span>功能 F2</span>
     <strong>同步 live schema 與知識庫路由</strong>
-    <em>99%</em>
+    <em>100%</em>
   </summary>
   <p class="detail-summary">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
   <div class="tasks">
@@ -1944,8 +1944,8 @@
     <span class="status">卡住</span>
   </div>
   <div class="task-progress">
-    <span>92%</span>
-    <div class="bar" aria-label="進度"><span style="width: 92%"></span></div>
+    <span>96%</span>
+    <div class="bar" aria-label="進度"><span style="width: 96%"></span></div>
   </div>
   <div class="task-grid">
     <section>
@@ -1954,10 +1954,10 @@
     </section>
     <section>
       <h5>驗證證據</h5>
-      <ul class="evidence"><li><strong>github-actions</strong>: tool-imagecompressor branch / PR sync runs 26282142330, 26282194741, 26282238457 <span>SB-2223 branch 建立後 Notion comment mention Zeal Lin；PR #10 opened 進 TECH REVIEW；review_requested 從 DEV IN PROGRESS 回 TECH REVIEW 並 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor repair PR sync runs 26282312397, 26282354736 <span>ISS-200 / PR #11 opened 後狀態 Fixing 並 mention Zeal Lin；review_requested 維持 Fixing 並再次 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor run 26282409153 and github-docs cascade run 26282501635 <span>SB-2223 單卡 FUNC REVIEW FAILED rollback 與 SB-2222 Feature Hub cascade 都回 DEV IN PROGRESS，並在 Notion child comment mention Zeal Lin。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #13 and runs 26282892876, 26282931319, 26282986105 <span>SB-2224 無 child tech reviewer 時從 parent SB-2222 繼承 Zeal Lin，PR opened sync 成功 mention parent reviewer；closed-not-merged 後狀態回 DEV IN PROGRESS。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 / #11 <span>兩個 PR 目前 open 且 review request 指向 `zeallin`；已在 PR comment tag Zeal 說明依序送出 Comment、Request changes、Approve。</span></li><li><strong>github-actions</strong>: ISS-201 with tool-imagecompressor PR #12 / #14 / #15 / #16 and runs 26282735804, 26282770577, 26282808528, 26283054976, 26283144472, 26283144522, 26283215554, 26283307702, 26283299721, 26283432982, 26283550987 <span>使用者端 AI repair skill E2E 完成：判斷只修 tool-imagecompressor，寫回 Affected / Resolved Repo Execution 與 Repair Routing Summary，建立 fix/ISS-201 branch，修 README，跑 prettier / diff check，PR merge 後 ISS-201 變 Tech Fixed；Gemini COMMENTED review path 也已由 PR #12/#14/#15 live 測。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #10 pull_request_review run 26292164189 <span>Zeal Lin `COMMENTED` review 觸發成功；log 顯示 review_state=commented，Notion `SB-2223` 變 `DEV IN PROGRESS`，並新增 mention comment：「Tech Reviewer 有留言需要回應」。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #11 pull_request_review run 26292193861 <span>Zeal Lin `APPROVED` review 觸發成功；log 顯示 `Approved -&gt; waiting for merge`，Notion `ISS-200` 維持 `Fixing` 且沒有新增 comment，符合 approved 不改狀態設計。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 comment 4519545792 and PR #11 comment 4519545774 <span>已重新 tag/request Zeal：PR #10 補 SB changes_requested / approved；PR #11 補 ISS changes_requested。</span></li></ul>
+      <ul class="evidence"><li><strong>github-actions</strong>: tool-imagecompressor branch / PR sync runs 26282142330, 26282194741, 26282238457 <span>SB-2223 branch 建立後 Notion comment mention Zeal Lin；PR #10 opened 進 TECH REVIEW；review_requested 從 DEV IN PROGRESS 回 TECH REVIEW 並 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor repair PR sync runs 26282312397, 26282354736 <span>ISS-200 / PR #11 opened 後狀態 Fixing 並 mention Zeal Lin；review_requested 維持 Fixing 並再次 mention reviewer。</span></li><li><strong>github-actions</strong>: tool-imagecompressor run 26282409153 and github-docs cascade run 26282501635 <span>SB-2223 單卡 FUNC REVIEW FAILED rollback 與 SB-2222 Feature Hub cascade 都回 DEV IN PROGRESS，並在 Notion child comment mention Zeal Lin。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #13 and runs 26282892876, 26282931319, 26282986105 <span>SB-2224 無 child tech reviewer 時從 parent SB-2222 繼承 Zeal Lin，PR opened sync 成功 mention parent reviewer；closed-not-merged 後狀態回 DEV IN PROGRESS。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 / #11 <span>兩個 PR 目前 open 且 review request 指向 `zeallin`；已在 PR comment tag Zeal 說明依序送出 Comment、Request changes、Approve。</span></li><li><strong>github-actions</strong>: ISS-201 with tool-imagecompressor PR #12 / #14 / #15 / #16 and runs 26282735804, 26282770577, 26282808528, 26283054976, 26283144472, 26283144522, 26283215554, 26283307702, 26283299721, 26283432982, 26283550987 <span>使用者端 AI repair skill E2E 完成：判斷只修 tool-imagecompressor，寫回 Affected / Resolved Repo Execution 與 Repair Routing Summary，建立 fix/ISS-201 branch，修 README，跑 prettier / diff check，PR merge 後 ISS-201 變 Tech Fixed；Gemini COMMENTED review path 也已由 PR #12/#14/#15 live 測。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #10 pull_request_review run 26292164189 <span>Zeal Lin `COMMENTED` review 觸發成功；log 顯示 review_state=commented，Notion `SB-2223` 變 `DEV IN PROGRESS`，並新增 mention comment：「Tech Reviewer 有留言需要回應」。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #11 pull_request_review run 26292193861 <span>Zeal Lin `APPROVED` review 觸發成功；log 顯示 `Approved -&gt; waiting for merge`，Notion `ISS-200` 維持 `Fixing` 且沒有新增 comment，符合 approved 不改狀態設計。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 comment 4519545792 and PR #11 comment 4519545774 <span>已重新 tag/request Zeal：PR #10 補 SB changes_requested / approved；PR #11 補 ISS changes_requested。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR #10 pull_request_review run 26319498585 <span>Zeal Lin `CHANGES_REQUESTED` review 觸發成功；log 顯示 review_state=changes_requested，Notion `SB-2223` 維持 `DEV IN PROGRESS`，並新增 mention comment：「Tech Review 未通過」。</span></li><li><strong>github</strong>: tool-imagecompressor PR #10 comment 4523715012 <span>已通知 Zeal：PR #10 Request changes 已驗證成功，接著請送 PR #10 Approve。</span></li></ul>
     </section>
   </div>
-  <p class="notes">Zeal 已在 PR #10 送出 COMMENTED，並在 PR #11 送出 APPROVED；兩個 pull_request_review run 均成功，Notion 結果符合設計。已重新 request/tag Zeal 補送 PR #10 Request changes / Approve 與 PR #11 Request changes。</p>
+  <p class="notes">Zeal 已在 PR #10 送出 COMMENTED / CHANGES_REQUESTED，並在 PR #11 送出 APPROVED；三個 pull_request_review run 均成功，Notion 結果符合設計。已重新 request/tag Zeal 補送 PR #10 Approve。</p>
 </article>
 
 
@@ -1997,10 +1997,10 @@
             <strong>展開變更紀錄</strong>
             <span>查看對話中造成範圍、需求或驗證狀態改變的紀錄。</span>
           </div>
-          <span>12 筆</span>
+          <span>13 筆</span>
         </summary>
         <div class="detail-body">
-          <ul class="change-log"><li><strong>2026-05-20T18:55:00+08:00</strong> user: 正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。<span>整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。</span></li><li><strong>2026-05-20T19:10:00+08:00</strong> user: 確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。<span>新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。</span></li><li><strong>2026-05-21T10:10:00+08:00</strong> system: 開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。<span>repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。</span></li><li><strong>2026-05-21T14:45:00+08:00</strong> tool: Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。<span>Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。</span></li><li><strong>2026-05-21T15:35:00+08:00</strong> user: 要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。<span>next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。</span></li><li><strong>2026-05-21T20:05:00+08:00</strong> user: 要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。<span>增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。</span></li><li><strong>2026-05-22T14:10:00+08:00</strong> user: 要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。<span>新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。</span></li><li><strong>2026-05-22T15:01:25+08:00</strong> user: 要求先把所有流程與測試狀態寫成文件，之後先補測所有可測流程，再開始 Notion Worker 設定。<span>新增流程測試狀態文件作為 source of truth，並把 Notion Worker 設定放到可測 GitHub Actions / skill 路徑補測之後。</span></li><li><strong>2026-05-22T15:36:55+08:00</strong> tool: 完成多數已實作 GitHub Actions live flow 補測，包含 staging/prod merge、rollup、cascade、repair closed-not-merged、terminal guard、多 repo completion、Sprint fallback 與 branch prefix。<span>Notion Worker 前的主要 GitHub Actions 狀態機已以真實 Notion/GitHub side effect 驗證；剩餘 review event 需要第二個 GitHub reviewer，AI skill code repair E2E 仍未覆蓋。</span></li><li><strong>2026-05-22T18:13:23+08:00</strong> user: 要求所有已實作流程都進行 live 測，並允許真實 tag 同事來測 reviewer 事件。<span>將原本 blocked 的 GitHub review_requested / review submitted 類流程重新納入 live 測試範圍；Notion Worker 設定延後到這批可測流程全部補測完成後。</span></li><li><strong>2026-05-22T19:01:18+08:00</strong> user: 要求完成後用圖像化方式呈現所有 flow，並標註目前完成/沒完成、已測/未測的項目。<span>新增獨立 Mermaid flow map 文件，讓 runtime ownership、Repo Execution、Review Issue repair、AI skill、Worker 目標流與 legacy 移除流都有視覺化狀態標註。</span></li><li><strong>2026-05-22T22:22:50+08:00</strong> user: Zeal 已送出部分 GitHub review，要求檢查結果。<span>確認 PR #10 COMMENTED 與 PR #11 APPROVED 兩條真人 review path 已觸發成功；更新測試狀態、flow map 與剩餘 blocked 項目。</span></li></ul>
+          <ul class="change-log"><li><strong>2026-05-20T18:55:00+08:00</strong> user: 正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。<span>整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。</span></li><li><strong>2026-05-20T19:10:00+08:00</strong> user: 確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。<span>新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。</span></li><li><strong>2026-05-21T10:10:00+08:00</strong> system: 開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。<span>repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。</span></li><li><strong>2026-05-21T14:45:00+08:00</strong> tool: Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。<span>Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。</span></li><li><strong>2026-05-21T15:35:00+08:00</strong> user: 要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。<span>next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。</span></li><li><strong>2026-05-21T20:05:00+08:00</strong> user: 要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。<span>增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。</span></li><li><strong>2026-05-22T14:10:00+08:00</strong> user: 要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。<span>新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。</span></li><li><strong>2026-05-22T15:01:25+08:00</strong> user: 要求先把所有流程與測試狀態寫成文件，之後先補測所有可測流程，再開始 Notion Worker 設定。<span>新增流程測試狀態文件作為 source of truth，並把 Notion Worker 設定放到可測 GitHub Actions / skill 路徑補測之後。</span></li><li><strong>2026-05-22T15:36:55+08:00</strong> tool: 完成多數已實作 GitHub Actions live flow 補測，包含 staging/prod merge、rollup、cascade、repair closed-not-merged、terminal guard、多 repo completion、Sprint fallback 與 branch prefix。<span>Notion Worker 前的主要 GitHub Actions 狀態機已以真實 Notion/GitHub side effect 驗證；剩餘 review event 需要第二個 GitHub reviewer，AI skill code repair E2E 仍未覆蓋。</span></li><li><strong>2026-05-22T18:13:23+08:00</strong> user: 要求所有已實作流程都進行 live 測，並允許真實 tag 同事來測 reviewer 事件。<span>將原本 blocked 的 GitHub review_requested / review submitted 類流程重新納入 live 測試範圍；Notion Worker 設定延後到這批可測流程全部補測完成後。</span></li><li><strong>2026-05-22T19:01:18+08:00</strong> user: 要求完成後用圖像化方式呈現所有 flow，並標註目前完成/沒完成、已測/未測的項目。<span>新增獨立 Mermaid flow map 文件，讓 runtime ownership、Repo Execution、Review Issue repair、AI skill、Worker 目標流與 legacy 移除流都有視覺化狀態標註。</span></li><li><strong>2026-05-22T22:22:50+08:00</strong> user: Zeal 已送出部分 GitHub review，要求檢查結果。<span>確認 PR #10 COMMENTED 與 PR #11 APPROVED 兩條真人 review path 已觸發成功；更新測試狀態、flow map 與剩餘 blocked 項目。</span></li><li><strong>2026-05-23T09:23:18+08:00</strong> user: Zeal 已在 PR #10 送出 Request changes，要求檢查結果。<span>確認 SB-* changes_requested path 已 live 測通過；剩餘 PR #10 approved 與 PR #11 changes_requested。</span></li></ul>
         </div>
       </details>
     </div>
