@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-23T10:05:30+08:00",
+  "updated_at": "2026-05-23T18:58:00+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -13,7 +13,7 @@
   "current_focus": {
     "feature_id": "F2",
     "task_id": "T2.10",
-    "summary": "已確認 Zeal 的 PR #10 APPROVED review event 成功觸發 Notion sync 且符合等待 merge 設計；剩餘 ISS changes_requested 等 Zeal 補送。"
+    "summary": "已確認 Zeal 的 PR #11 CHANGES_REQUESTED review event 成功觸發 Notion sync；GitHub Actions / AI repair skill 的已實作可測項目已補測完成。"
   },
   "conversation_changes": [
     {
@@ -99,6 +99,12 @@
       "source": "user",
       "change": "Zeal 已在 PR #10 送出 Approve，要求檢查結果。",
       "impact": "確認 SB-* approved path 已 live 測通過；剩餘 PR #11 changes_requested。"
+    },
+    {
+      "at": "2026-05-23T18:58:00+08:00",
+      "source": "user",
+      "change": "Zeal 已在 PR #11 送出 Request changes，要求檢查結果。",
+      "impact": "確認 ISS-* changes_requested path 已 live 測通過；reviewer event 補測全部完成，下一步可進入 Notion Worker / Agent implementation。"
     }
   ],
   "goal_groups": [
@@ -517,9 +523,9 @@
         {
           "id": "T2.10",
           "title": "補測 reviewer event、Notion mention 與 AI repair skill E2E",
-          "status": "blocked",
+          "status": "verified",
           "workstream": "Ops / Verification",
-          "progress_percent": 98,
+          "progress_percent": 100,
           "definition_of_done": [
             "live 測 `SB-*` PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
             "live 測 `ISS-*` repair PR `review_requested`、`changes_requested`、`commented`、`approved` 狀態同步",
@@ -532,8 +538,8 @@
             "/Users/peterting/Documents/artogo/github-docs/progress.json",
             "/Users/peterting/Documents/artogo/github-docs/progress.html"
           ],
-          "notes": "Zeal 已在 PR #10 送出 COMMENTED / CHANGES_REQUESTED / APPROVED，並在 PR #11 送出 APPROVED；四個 pull_request_review run 均成功，Notion 結果符合設計。已重新 request/tag Zeal 補送 PR #11 Request changes。",
-          "blocker": "等待 Zeal 在 PR #11 送出 ISS-* changes_requested。PR author 自測會被 workflow guard 跳過。",
+          "notes": "Zeal 已在 PR #10 送出 COMMENTED / CHANGES_REQUESTED / APPROVED，並在 PR #11 送出 APPROVED / CHANGES_REQUESTED；Gemini Code Assist 送出 ISS-* COMMENTED。所有已實作 reviewer event path 均成功，Notion 結果符合設計。",
+          "blocker": "",
           "evidence": [
             {
               "type": "github-actions",
@@ -599,6 +605,11 @@
               "type": "github",
               "ref": "tool-imagecompressor PR #11 comment 4523826269",
               "result": "已通知 Zeal：PR #10 Approve 已驗證成功，目前只剩 PR #11 Request changes。"
+            },
+            {
+              "type": "github-actions",
+              "ref": "tool-imagecompressor PR #11 pull_request_review run 26323416359",
+              "result": "Zeal Lin `CHANGES_REQUESTED` review 觸發成功；log 顯示 review_state=changes_requested，Notion `ISS-200` 維持 `Fixing`，`Repair PR URLs` 追加 submitted line，並新增 mention comment：「Repair PR 未通過」。"
             }
           ]
         },
@@ -656,9 +667,9 @@
     }
   ],
   "next_actions": [
-    "等待 Zeal 在 tool-imagecompressor PR #11 送出 ISS-* Request changes review，確認 Notion 狀態與 comment 是否符合預期",
-    "PR #11 changes_requested 補測完成後更新 docs/notion-automation-flow-test-status.md、progress.json、progress.html，並清理或關閉 PR #10 / #11",
-    "review submitted 類流程補測完成或保留明確 blocked reason 後，再開始 Notion Worker / Agent implementation 與 trigger 設定"
+    "開始 Notion Worker / Agent implementation 與 trigger 設定",
+    "若要清理測試物件，另行關閉 tool-imagecompressor PR #10 / #11 並把測試卡標記為終態",
+    "Worker 實作時補上 route / reroute / retest notification 的 live test evidence"
   ],
   "not_covered": [
     {
@@ -668,10 +679,6 @@
     {
       "item": "Notion Agent / Worker runtime",
       "reason": "本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。"
-    },
-    {
-      "item": "GitHub review event live test",
-      "reason": "review_requested 已 live 測；SB-* commented / changes_requested / approved 已由 Zeal live 測；ISS-* repair PR commented 已由 Gemini live 測；ISS-* approved 已由 Zeal live 測。剩餘 ISS-* changes_requested 仍等待 Zeal 在 PR #11 補送真人 review。"
     }
   ]
 }
