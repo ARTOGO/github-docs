@@ -5,4 +5,7 @@ node_modules/
 workers/**/node_modules/
 workers/**/.env
 workers/**/.env.*
+workers/**/dist/
+workers/**/workers.json
+workers/**/workers.*.json
 .tools/
