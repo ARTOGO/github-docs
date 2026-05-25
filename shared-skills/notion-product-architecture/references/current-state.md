@@ -209,5 +209,10 @@ Do not use this mental model anymore:
   - Routed to Repo Execution `SB-2223` / `tool-imagecompressor`
   - Wrote `Affected Repo Execution`, `Repair Routing Summary`, `Reopen Count=1`, `Resolved Repo Execution`
   - Final status became `Tech Fixed`
-- Hosted Worker deploy still requires `ntn login` by an eligible workspace member.
-- Custom Agent trigger/access configuration still needs to be completed in Notion web/desktop UI.
+- Hosted Worker `artogo-product-workflow` is deployed as worker id `019e5e25-63de-76ab-8dfd-2cfb108eae66`.
+- Custom Agent `Artogo Review Issue Router` is connected to Review Issue / Sprint Backlog access and the Worker tools.
+- Custom Agent trigger evidence:
+  - `ISS-209` page-added trigger called `routeReviewIssue` and routed to `SB-2223` / `tool-imagecompressor`.
+  - `ISS-209` resolved relation update called `completeReviewIssueIfReady` and moved the issue to `Tech Fixed`.
+  - `ISS-209` status back to `Open` called `rerouteReviewIssue`, cleared old repair state, and set `Reopen Count=1`.
+  - `ISS-210` completion run `019e5e74-d26d-7559-899b-ff928b674209` set `retestNotifications=1` and commented on Feature Hub `SB-2222`.

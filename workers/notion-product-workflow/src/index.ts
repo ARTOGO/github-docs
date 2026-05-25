@@ -20,8 +20,15 @@ function config() {
 }
 
 const routeSchema = j.object({
-  reviewIssuePageId: j.string().describe("The Notion page ID for the Review Issue.").nullable(),
-  reviewIssueId: j.string().describe("The unique Review Issue ID, for example ISS-200.").nullable(),
+  reviewIssuePageUrl: j
+    .string()
+    .describe("Preferred. The full Notion page URL from the trigger text's 查看頁面 link, for example https://www.notion.so/36b5135e076e819d82edf03caa6dec9c.")
+    .nullable(),
+  triggerText: j
+    .string()
+    .describe("Optional fallback. Paste the trigger text if it contains a 查看頁面 Notion URL or an ISS-* identifier.")
+    .nullable(),
+  reviewIssueId: j.string().describe("Optional fallback. The unique Review Issue ID, for example ISS-200.").nullable(),
   affectedRepoNames: j
     .array(j.string())
     .describe("Repo names that the agent determined are affected, for example tool-imagecompressor.")
@@ -64,8 +71,15 @@ worker.tool("completeReviewIssueIfReady", {
   description:
     "Use after a repair PR is merged or Resolved Repo Execution changes. Moves the Review Issue to Tech Fixed only when all affected repos are resolved.",
   schema: j.object({
-    reviewIssuePageId: j.string().describe("The Notion page ID for the Review Issue.").nullable(),
-    reviewIssueId: j.string().describe("The unique Review Issue ID, for example ISS-200.").nullable(),
+    reviewIssuePageUrl: j
+      .string()
+      .describe("Preferred. The full Notion page URL from the trigger text's 查看頁面 link, for example https://www.notion.so/36b5135e076e819d82edf03caa6dec9c.")
+      .nullable(),
+    triggerText: j
+      .string()
+      .describe("Optional fallback. Paste the trigger text if it contains a 查看頁面 Notion URL or an ISS-* identifier.")
+      .nullable(),
+    reviewIssueId: j.string().describe("Optional fallback. The unique Review Issue ID, for example ISS-200.").nullable(),
     applyChanges: j.boolean().describe("Set true to update the Review Issue status in Notion.").nullable(),
     notify: j.boolean().describe("Set false to suppress Notion comments.").nullable(),
   }),

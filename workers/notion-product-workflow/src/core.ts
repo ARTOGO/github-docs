@@ -25,7 +25,9 @@ export type WorkerConfig = {
 
 export type RouteReviewIssueInput = {
   reviewIssuePageId?: string | null;
+  reviewIssuePageUrl?: string | null;
   reviewIssueId?: string | null;
+  triggerText?: string | null;
   affectedRepoNames?: string[] | null;
   routingSummary?: string | null;
   applyChanges?: boolean | null;
@@ -36,7 +38,9 @@ export type RouteReviewIssueInput = {
 
 export type CompleteReviewIssueInput = {
   reviewIssuePageId?: string | null;
+  reviewIssuePageUrl?: string | null;
   reviewIssueId?: string | null;
+  triggerText?: string | null;
   applyChanges?: boolean | null;
   notify?: boolean | null;
 };
@@ -149,15 +153,34 @@ async function queryAll(notion: NotionLikeClient, args: Record<string, any>): Pr
   return results;
 }
 
+function toDashedUuid(value: string): string | null {
+  const hex = value.replace(/-/g, "").toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(hex)) return null;
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function extractPageId(value?: string | null): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed || /^notion-\d+$/i.test(trimmed)) return null;
+  const match = trimmed.match(/[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}/i);
+  return match ? toDashedUuid(match[0]) : null;
+}
+
+function extractReviewIssueId(value?: string | null): string | null {
+  const match = value?.match(/\bISS-\d+\b/i);
+  return match ? match[0].toUpperCase() : null;
+}
+
 async function findReviewIssue(notion: NotionLikeClient, config: WorkerConfig, input: RouteReviewIssueInput | CompleteReviewIssueInput): Promise<any> {
-  if (input.reviewIssuePageId) {
-    return retrievePage(notion, input.reviewIssuePageId);
+  const pageId = extractPageId(input.reviewIssuePageId) ?? extractPageId(input.reviewIssuePageUrl) ?? extractPageId(input.triggerText);
+  if (pageId) {
+    return retrievePage(notion, pageId);
   }
 
-  const reviewIssueId = input.reviewIssueId?.trim();
+  const reviewIssueId = input.reviewIssueId?.trim() || extractReviewIssueId(input.triggerText);
   const match = reviewIssueId?.match(/^ISS-(\d+)$/i);
   if (!match) {
-    throw new Error("Provide reviewIssuePageId or reviewIssueId like ISS-200.");
+    throw new Error("Provide reviewIssuePageUrl, triggerText with a Notion page URL, a valid reviewIssuePageId UUID, or reviewIssueId like ISS-200. Do not pass Notion internal refs like notion-62.");
   }
 
   const results = await queryAll(notion, {

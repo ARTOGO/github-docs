@@ -242,15 +242,15 @@
         <div class="subtitle">github-docs Notion 自動化重構與部署：完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。</div>
       </div>
       <div class="timestamp">
-        <p>資料更新：2026-05-24T00:00:00+08:00</p>
-        <p>HTML 產生：2026-05-24T00:01:55+08:00</p>
+        <p>資料更新：2026-05-25T17:30:00+08:00</p>
+        <p>HTML 產生：2026-05-25T17:38:19+08:00</p>
       </div>
     </header>
 
     <section class="hero" aria-label="全局總覽">
       <div class="hero-grid">
         <div>
-          <span class="pill danger">需處理</span>
+          <span class="pill warning">需補驗證</span>
           <h2 style="margin-top: 16px;">同步 live schema 與知識庫路由</h2>
           <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
         </div>
@@ -262,7 +262,7 @@
         <div class="hero-card">
           <div class="label">目前焦點</div>
           <div style="font-size: 22px; font-weight: 900; margin-bottom: 10px;">功能 F2 · 任務 T2.12</div>
-          <p>Notion Worker-compatible tools 已實作並用真實 Notion `ISS-203` live 測通過；Hosted Worker deploy 與 Custom Agent trigger 設定仍需 Notion CLI login / UI。</p>
+          <p>Hosted Notion Worker 與 Custom Agent active path 已完成 live 測：`ISS-209` 覆蓋 route / complete / reroute，`ISS-210` 覆蓋 Feature Hub retest notification。</p>
         </div>
       </div>
     </section>
@@ -270,23 +270,23 @@
     <section class="kpi-grid">
       <article class="card">
         <div class="kpi-label">範圍完成</div>
-        <div class="kpi-value">14 / 16</div>
+        <div class="kpi-value">15 / 16</div>
         <div class="kpi-note">已驗證任務才算真正完成；只有完成實作仍需補驗證證據。</div>
       </article>
       <article class="card">
         <div class="kpi-label">目前階段</div>
-        <div class="kpi-value">卡住</div>
+        <div class="kpi-value">已驗證</div>
         <div class="kpi-note">實作 Notion Worker tools 與 Agent 設定指引</div>
       </article>
       <article class="card">
         <div class="kpi-label">阻塞項目</div>
-        <div class="kpi-value">1</div>
+        <div class="kpi-value">0</div>
         <div class="kpi-note">包含 blocked 任務與明確阻塞清單；enum 保留原文。</div>
       </article>
       <article class="card">
         <div class="kpi-label">風險等級</div>
-        <div class="kpi-value">高</div>
-        <div class="kpi-note">目前有阻塞或資料完整性警告，應先排除再宣稱完成。</div>
+        <div class="kpi-value">中</div>
+        <div class="kpi-note">有完成但尚未驗證的工作，或仍有未覆蓋流程。</div>
       </article>
     </section>
 
@@ -307,9 +307,9 @@
 
 <div class="milestone-row">
   <strong>同步 live schema 與知識庫路由</strong>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 99%;"></div></div>
-  <strong>99%</strong>
-  <span class="pill active">進行中</span>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <strong>100%</strong>
+  <span class="pill success">已驗證</span>
 </div>
 </div>
         </section>
@@ -347,14 +347,14 @@
 
 <div class="feature-focus-card">
   <div>
-    <span class="pill danger">目前功能 · 已阻塞</span>
+    <span class="pill success">目前功能 · 正常</span>
     <h3>功能 F2：同步 live schema 與知識庫路由</h3>
     <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
   </div>
   <div class="feature-focus-meta">
-    <div class="feature-focus-metric"><small>進度</small><strong>99%</strong></div>
-    <div class="feature-focus-metric"><small>任務</small><strong>10/12</strong></div>
-    <div class="feature-focus-metric"><small>阻塞</small><strong>1</strong></div>
+    <div class="feature-focus-metric"><small>進度</small><strong>100%</strong></div>
+    <div class="feature-focus-metric"><small>任務</small><strong>11/12</strong></div>
+    <div class="feature-focus-metric"><small>阻塞</small><strong>0</strong></div>
     <div class="feature-focus-metric"><small>焦點</small><strong>任務 T2.12</strong></div>
   </div>
 </div>
@@ -379,9 +379,9 @@
       <div class="feature-list-title">功能 F2：同步 live schema 與知識庫路由</div>
       <div class="feature-list-subtitle">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</div>
     </div>
-    <span class="pill yellow">99%</span>
+    <span class="pill green">100%</span>
   </div>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 99%;"></div></div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
 </button>
 </div>
           </div>
@@ -553,12 +553,12 @@
 </section>
 
 <section class="scope-column">
-  <div class="scope-column-head">Worker / Agent <span class="pill gray">0/1</span></div>
+  <div class="scope-column-head">Worker / Agent <span class="pill green">1/1</span></div>
 
 <article class="scope-task">
   <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
   <div class="task-meta">
-    <span class="pill danger">卡住</span>
+    <span class="pill success">已驗證</span>
     <span class="pill blue">任務 T2.12</span>
   </div>
 </article>
@@ -740,12 +740,6 @@
   <td>{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</td>
   <td><span class="pill yellow">待處理</span></td>
 </tr>
-
-<tr>
-  <td>未覆蓋</td>
-  <td>{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</td>
-  <td><span class="pill yellow">待處理</span></td>
-</tr>
 </tbody>
   </table>
 </div>
@@ -844,21 +838,13 @@
 
 </section>
 
-<section class="mini-lane">
-  <div class="mini-lane-title">已阻塞 <span>1</span></div>
-
-<article class="task-card">
-  <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
-  <div class="task-meta">
-    <span class="pill purple">Worker / Agent</span>
-    <span class="pill danger">卡住</span>
-  </div>
-</article>
-
+<section class="mini-lane empty">
+  <div class="mini-lane-title">已阻塞 <span>0</span></div>
+  <p class="muted small">無任務</p>
 </section>
 
 <section class="mini-lane">
-  <div class="mini-lane-title">已完成 <span>10</span></div>
+  <div class="mini-lane-title">已完成 <span>11</span></div>
 
 <article class="task-card">
   <strong>重新產生 progress.html</strong>
@@ -940,6 +926,14 @@
   </div>
 </article>
 
+<article class="task-card">
+  <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
+  <div class="task-meta">
+    <span class="pill purple">Worker / Agent</span>
+    <span class="pill success">已驗證</span>
+  </div>
+</article>
+
 </section>
 </div></div>
       <div class="tab-panel workstream-panel"><div class="load-grid">
@@ -980,9 +974,9 @@
 
 <article class="management-card">
   <h4>Worker / Agent</h4>
-  <div class="kpi-value small-value">85%</div>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 85%;"></div></div>
-  <div class="kpi-note">1 未完成 / 1 已阻塞</div>
+  <div class="kpi-value small-value">100%</div>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <div class="kpi-note">0 未完成 / 0 已阻塞</div>
 </article>
 </div></div>
       <div class="tab-panel timeline-panel">
@@ -1072,9 +1066,9 @@
 <div class="timeline-track">
   <div class="timeline-track-label">Worker / Agent<small>1 個任務</small></div>
 
-<div class="timeline-bar danger" style="grid-column: 6 / 8;">
+<div class="timeline-bar success" style="grid-column: 6 / 8;">
   實作 Notion Worker tools 與 Agent 設定指引
-  <small>卡住 · 85%</small>
+  <small>已驗證 · 100%</small>
 </div>
 
 </div>
@@ -1092,12 +1086,6 @@
   <td>{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</td>
   <td><span class="pill yellow">待處理</span></td>
 </tr>
-
-<tr>
-  <td>未覆蓋</td>
-  <td>{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</td>
-  <td><span class="pill yellow">待處理</span></td>
-</tr>
 </tbody>
   </table>
 </div>
@@ -1110,22 +1098,22 @@
 <section class="card blocker-diagnosis">
   <div class="card-title">
     <h3>阻塞診斷</h3>
-    <span class="pill red">待處理</span>
+    <span class="pill green">無阻塞</span>
   </div>
   <div class="blocker-grid">
     <article class="blocker-card">
       <h4>目前阻塞節點</h4>
       <dl class="blocker-field-grid">
-        <dt>節點</dt><dd>Worker / Agent · 實作 Notion Worker tools 與 Agent 設定指引</dd>
-        <dt>卡住原因</dt><dd>Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI，現有 MCP / API 無法直接建立 Custom Agent triggers。</dd>
-        <dt>受阻原因</dt><dd>Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI，現有 MCP / API 無法直接建立 Custom Agent triggers。</dd>
+        <dt>節點</dt><dd>目前沒有已阻塞任務</dd>
+        <dt>卡住原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
+        <dt>受阻原因</dt><dd>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</dd>
         <dt>負責人</dt><dd>待指定</dd>
         <dt>解除期限</dt><dd>待指定</dd>
       </dl>
     </article>
     <article class="blocker-card">
       <h4>影響鏈</h4>
-      <div class="impact-chain">實作 Notion Worker tools 與 Agent 設定指引 → 下游任務 → 驗證 → 上線就緒</div>
+      <div class="impact-chain">無啟用中的影響鏈</div>
       <h4 style="margin-top: 14px;">解除阻塞清單</h4>
       <div class="unblock-list"><div class="unblock-item"><span class="unblock-num">1</span><span>補齊卡住原因與負責人</span></div><div class="unblock-item"><span class="unblock-num">2</span><span>確認受影響任務 / 工作流</span></div><div class="unblock-item"><span class="unblock-num">3</span><span>定義解除阻塞所需決策或行動</span></div><div class="unblock-item"><span class="unblock-num">4</span><span>解除後重新跑驗證並更新證據</span></div></div>
     </article>
@@ -1183,9 +1171,9 @@
 <div class="status-row tone-success">
   <div class="status-row-label">
     <span>已驗證</span>
-    <strong>14</strong>
+    <strong>15</strong>
   </div>
-  <div class="mini-bar"><span style="width: 88%"></span></div>
+  <div class="mini-bar"><span style="width: 94%"></span></div>
 </div>
 
 <div class="status-row tone-warning">
@@ -1223,9 +1211,9 @@
 <div class="status-row tone-danger">
   <div class="status-row-label">
     <span>卡住</span>
-    <strong>1</strong>
+    <strong>0</strong>
   </div>
-  <div class="mini-bar"><span style="width: 6%"></span></div>
+  <div class="mini-bar"><span style="width: 0%"></span></div>
 </div>
 
 <div class="status-row tone-neutral">
@@ -1245,19 +1233,13 @@
 </div>
 </div>
             <div><h4>下一步</h4><ol class="action-list">
-<li class="action-item tone-danger">
-  <span>卡住</span>
-  <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
-  <em>功能 F2 · 任務 T2.12 · 85%</em>
-</li>
-
 <li class="action-item tone-warning">
   <span>待驗證</span>
   <strong>建立 progress-dashboard 基礎檔案</strong>
   <em>功能 F2 · 任務 T2.1 · 100%</em>
 </li>
 </ol></div>
-            <div><h4>風險 / 缺口</h4><ul><li>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</li><li>未覆蓋：{&#x27;item&#x27;: &#x27;Notion Agent / Worker runtime&#x27;, &#x27;reason&#x27;: &#x27;本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。&#x27;}</li></ul></div>
+            <div><h4>風險 / 缺口</h4><ul><li>未覆蓋：{&#x27;item&#x27;: &#x27;org-level GitHub Actions secrets visibility&#x27;, &#x27;reason&#x27;: &#x27;目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。&#x27;}</li></ul></div>
           </div>
         </section>
       </div>
@@ -1344,7 +1326,7 @@
   <div class="card-title drawer-card-title">
     <h3>任務細節抽屜</h3>
     <div class="drawer-title-actions">
-      <span class="pill danger">卡住</span>
+      <span class="pill success">已驗證</span>
       <button type="button" class="drawer-close" data-drawer-close aria-label="收合任務細節">收合</button>
     </div>
   </div>
@@ -1352,7 +1334,7 @@
     <div class="detail-label">功能 F2 · 任務 T2.12</div>
     <div class="detail-value"><strong>實作 Notion Worker tools 與 Agent 設定指引</strong></div>
   </div>
-  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill yellow" style="width: 85%;"></div></div><span>85%</span></div>
+  <div class="progress-detail-row"><strong>進度</strong><div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div><span>100%</span></div>
   <div class="detail-block-static">
     <div class="detail-label">進度拆解</div>
     <div>
@@ -1364,8 +1346,8 @@
 
 <div class="progress-detail-row">
   <strong>實作</strong>
-  <div class="mini-track"><div class="mini-fill yellow" style="width: 85%;"></div></div>
-  <span>85%</span>
+  <div class="mini-track"><div class="mini-fill green" style="width: 100%;"></div></div>
+  <span>100%</span>
 </div>
 
 <div class="progress-detail-row">
@@ -1393,7 +1375,7 @@
   </div>
   <div class="detail-block-static">
     <div class="detail-label">修改檔案</div>
-    <div class="detail-value"><ul><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/core.ts</li><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/index.ts</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-worker-live-test.yml</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md</li></ul></div>
+    <div class="detail-value"><ul><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/core.ts</li><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/index.ts</li><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/test/core.test.ts</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-worker-live-test.yml</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-map.md</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-github-automation-architecture.md</li><li>/Users/peterting/Documents/artogo/github-docs/shared-skills/notion-product-architecture/references/current-state.md</li></ul></div>
   </div>
   <div class="detail-block-static">
     <div class="detail-label">檢查清單 / 子任務</div>
@@ -1401,7 +1383,7 @@
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗證證據</div>
-    <div class="detail-value"><ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；3 個 unit tests 通過。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li><li><strong>github-actions</strong>: github-docs run 26337196957 <span>Notion Worker live test 成功：建立 `ISS-203`，reroute 到 `SB-2223` / `tool-imagecompressor`，寫入 affected/routing/reopen count/resolved，最後狀態為 `Tech Fixed`。</span></li><li><strong>notion</strong>: Notion 產品開發流程自動化 <span>已在 Notion 正式流程頁補上 Worker tools、live test run、ISS-203 證據與 Custom Agent UI 設定 gate。</span></li></ul></div>
+    <div class="detail-value"><ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；6 個 unit tests 通過，包含 Feature Hub retest notification guard。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li><li><strong>github-actions</strong>: github-docs run 26337196957 <span>Notion Worker live test 成功：建立 `ISS-203`，reroute 到 `SB-2223` / `tool-imagecompressor`，寫入 affected/routing/reopen count/resolved，最後狀態為 `Tech Fixed`。</span></li><li><strong>notion</strong>: Notion 產品開發流程自動化 <span>已在 Notion 正式流程頁補上混合 runtime ownership、Worker / Custom Agent 現況、ISS-209 trigger 證據與 ISS-210 retest notification 證據。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e5f-d043-74b8-96df-968bb7ff3ceb / ISS-209 <span>Custom Agent page-added trigger 成功呼叫 `routeReviewIssue`，寫入 `Affected Repo Execution = SB-2223`、`Repair Routing Summary`、`Last Repair Sync At`，並 comment mention Zeal Lin。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e56-c0a3-7987-8e07-70259905d6c7 / ISS-208 <span>Custom Agent page-added trigger 成功呼叫 `routeReviewIssue`，將 `ISS-208` route 到 `tool-imagecompressor`，並新增 Notion comment mention。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e67-e0ed-7f03-98b2-ec834ca1ab18 / ISS-209 <span>Custom Agent `Resolved Repo Execution` property update trigger 成功呼叫 `completeReviewIssueIfReady`，將 `ISS-209` 狀態改為 `Tech Fixed`，更新 `Last Repair Sync At`，並新增 completion comment。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e6a-a110-7589-bd30-27de1a9d33f2 / ISS-209 <span>Custom Agent status back to `Open` trigger 成功呼叫 `rerouteReviewIssue`，清空 `Resolved Repo Execution` / `Repair PR URLs`，將 `Reopen Count` 改為 `1`，並重新 comment mention Zeal Lin。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e74-d26d-7559-899b-ff928b674209 / ISS-210 <span>`completeReviewIssueIfReady` 回傳 `retestNotifications=1`；`ISS-210` 變 `Tech Fixed`，`SB-2222` 收到 retest comment 並 mention Zeal Lin。</span></li><li><strong>notion</strong>: Notion skill page notion-product-architecture <span>已把公司 Notion skill 頁更新為 Worker / Agent 已部署並完成 ISS-209 / ISS-210 live trigger test 的現況。</span></li></ul></div>
   </div>
   <div class="detail-block-static">
     <div class="detail-label">驗收條件 / 連結 / 最新更新</div>
@@ -1501,9 +1483,9 @@
       <h3>同步 live schema 與知識庫路由</h3>
       <p>讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
     </div>
-    <strong>99%</strong>
+    <strong>100%</strong>
   </div>
-  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 8%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 8%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 8%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 8%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 8%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 8%" title="用真實 Notion 資料本地 dry-run 新流程"></span><span class="road-segment tone-success" style="width: 8%" title="真實 Notion + GitHub Actions 完整流程測試"></span><span class="road-segment tone-success" style="width: 8%" title="建立 Notion 自動化流程測試狀態文件"></span><span class="road-segment tone-success" style="width: 8%" title="補測已實作 GitHub Actions live flow"></span><span class="road-segment tone-success" style="width: 8%" title="補測 reviewer event、Notion mention 與 AI repair skill E2E"></span><span class="road-segment tone-success" style="width: 8%" title="建立圖像化 flow map 與狀態矩陣"></span><span class="road-segment tone-danger" style="width: 8%" title="實作 Notion Worker tools 與 Agent 設定指引"></span></div>
+  <div class="road-track" aria-label="功能進度"><span class="road-segment tone-warning" style="width: 8%" title="建立 progress-dashboard 基礎檔案"></span><span class="road-segment tone-success" style="width: 8%" title="重新產生 progress.html"></span><span class="road-segment tone-success" style="width: 8%" title="確認是否可直接更新 Notion schema"></span><span class="road-segment tone-success" style="width: 8%" title="同步 Notion 技能頁與 Local Runtime 路由頁"></span><span class="road-segment tone-success" style="width: 8%" title="重寫本地架構文件與 Notion 產品流程頁"></span><span class="road-segment tone-success" style="width: 8%" title="用真實 Notion 資料本地 dry-run 新流程"></span><span class="road-segment tone-success" style="width: 8%" title="真實 Notion + GitHub Actions 完整流程測試"></span><span class="road-segment tone-success" style="width: 8%" title="建立 Notion 自動化流程測試狀態文件"></span><span class="road-segment tone-success" style="width: 8%" title="補測已實作 GitHub Actions live flow"></span><span class="road-segment tone-success" style="width: 8%" title="補測 reviewer event、Notion mention 與 AI repair skill E2E"></span><span class="road-segment tone-success" style="width: 8%" title="建立圖像化 flow map 與狀態矩陣"></span><span class="road-segment tone-success" style="width: 8%" title="實作 Notion Worker tools 與 Agent 設定指引"></span></div>
   <div class="feature-rationale">
     <div>
       <h4>為何必要</h4>
@@ -1572,8 +1554,8 @@
   <strong>建立圖像化 flow map 與狀態矩陣</strong>
 </li>
 
-<li class="work-chip tone-danger">
-  <span>卡住</span>
+<li class="work-chip tone-success">
+  <span>已驗證</span>
   <strong>實作 Notion Worker tools 與 Agent 設定指引</strong>
 </li>
 </ul>
@@ -1728,7 +1710,7 @@
   <summary>
     <span>功能 F2</span>
     <strong>同步 live schema 與知識庫路由</strong>
-    <em>99%</em>
+    <em>100%</em>
   </summary>
   <p class="detail-summary">讓這輪 Phase 1 不只改 repo workflow，也同步完成 progress dashboard、live Notion schema 與公司知識庫的 routing 對齊。</p>
   <div class="tasks">
@@ -1907,7 +1889,7 @@
     </section>
     <section>
       <h5>驗證證據</h5>
-      <ul class="evidence"><li><strong>notion</strong>: Sprint Backlog SB-2213 https://www.notion.so/3685135e076e81f18cdfedec52d1eb0a <span>建立 [TEST][Codex] Repo Execution；branch workflow 回寫 GitHub Branch=feat/SB-2213_test_codex_notion_live_automat；PR opened 回寫 PR Status=Open / TECH REVIEW；PR closed-not-merged 回寫 PR Status=Closed / DEV IN PROGRESS；測試完成後標 ABANDONED。</span></li><li><strong>github-actions</strong>: tool-imagecompressor Notion branch run 26271165149 <span>workflow_dispatch 成功，log 顯示 Found 1 tasks、Processing SB-2213、Branch created、Updated Notion。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR sync runs 26271213059 and 26271239716 <span>PR #2 opened/closed-not-merged 兩次 sync 都成功，Notion 欄位符合預期。</span></li><li><strong>notion</strong>: Review Issue ISS-195 https://www.notion.so/3685135e076e81f9ae70f7fa17b40c3b <span>建立 [TEST][Codex] Review Issue；Affected Repo Execution 指向 SB-2213；repair PR opened 後狀態 Fixing 且寫入 Repair PR URLs；repair PR merged 後 Resolved Repo Execution 覆蓋 affected，狀態變 Tech Fixed。</span></li><li><strong>github</strong>: tool-imagecompressor PR #2 and PR #3 <span>PR #2 已 closed not merged；PR #3 已 merged，merge commit a42edd2。測試 branch 已清理。</span></li><li><strong>command</strong>: rg on docs/shared-skills/.github plus Notion page fetch <span>確認 Notion Agent / Worker 目前沒有實作部署；正式 live automation 仍是 GitHub Actions，Agent / Worker 是後續 Phase 2+ 遷移方向。</span></li></ul>
+      <ul class="evidence"><li><strong>notion</strong>: Sprint Backlog SB-2213 https://www.notion.so/3685135e076e81f18cdfedec52d1eb0a <span>建立 [TEST][Codex] Repo Execution；branch workflow 回寫 GitHub Branch=feat/SB-2213_test_codex_notion_live_automat；PR opened 回寫 PR Status=Open / TECH REVIEW；PR closed-not-merged 回寫 PR Status=Closed / DEV IN PROGRESS；測試完成後標 ABANDONED。</span></li><li><strong>github-actions</strong>: tool-imagecompressor Notion branch run 26271165149 <span>workflow_dispatch 成功，log 顯示 Found 1 tasks、Processing SB-2213、Branch created、Updated Notion。</span></li><li><strong>github-actions</strong>: tool-imagecompressor PR sync runs 26271213059 and 26271239716 <span>PR #2 opened/closed-not-merged 兩次 sync 都成功，Notion 欄位符合預期。</span></li><li><strong>notion</strong>: Review Issue ISS-195 https://www.notion.so/3685135e076e81f9ae70f7fa17b40c3b <span>建立 [TEST][Codex] Review Issue；Affected Repo Execution 指向 SB-2213；repair PR opened 後狀態 Fixing 且寫入 Repair PR URLs；repair PR merged 後 Resolved Repo Execution 覆蓋 affected，狀態變 Tech Fixed。</span></li><li><strong>github</strong>: tool-imagecompressor PR #2 and PR #3 <span>PR #2 已 closed not merged；PR #3 已 merged，merge commit a42edd2。測試 branch 已清理。</span></li><li><strong>command</strong>: rg on docs/shared-skills/.github plus Notion page fetch <span>當時確認 Notion Agent / Worker 尚未實作部署；正式 live automation 仍是 GitHub Actions。後續 T2.12 已補上 hosted Worker / Custom Agent route、complete、reroute 與 retest notification live trigger test。</span></li></ul>
     </section>
   </div>
   <p class="notes">測試使用 tool-imagecompressor，Sprint 測試 branch 已清掉；repair PR 使用空 commit 並以 admin bypass 合併，沒有改動檔案內容，但 master 歷史新增一個測試 merge commit。</p>
@@ -2018,29 +2000,29 @@
 </article>
 
 
-<article class="task task-blocked">
+<article class="task task-verified">
   <div class="task-head">
     <div>
       <p class="eyebrow">任務 T2.12</p>
       <h4>實作 Notion Worker tools 與 Agent 設定指引</h4>
     </div>
-    <span class="status">卡住</span>
+    <span class="status">已驗證</span>
   </div>
   <div class="task-progress">
-    <span>85%</span>
-    <div class="bar" aria-label="進度"><span style="width: 85%"></span></div>
+    <span>100%</span>
+    <div class="bar" aria-label="進度"><span style="width: 100%"></span></div>
   </div>
   <div class="task-grid">
     <section>
       <h5>修改檔案</h5>
-      <ul><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/core.ts</li><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/index.ts</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-worker-live-test.yml</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md</li></ul>
+      <ul><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/core.ts</li><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/index.ts</li><li>/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/test/core.test.ts</li><li>/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-worker-live-test.yml</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-map.md</li><li>/Users/peterting/Documents/artogo/github-docs/docs/notion-github-automation-architecture.md</li><li>/Users/peterting/Documents/artogo/github-docs/shared-skills/notion-product-architecture/references/current-state.md</li></ul>
     </section>
     <section>
       <h5>驗證證據</h5>
-      <ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；3 個 unit tests 通過。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li><li><strong>github-actions</strong>: github-docs run 26337196957 <span>Notion Worker live test 成功：建立 `ISS-203`，reroute 到 `SB-2223` / `tool-imagecompressor`，寫入 affected/routing/reopen count/resolved，最後狀態為 `Tech Fixed`。</span></li><li><strong>notion</strong>: Notion 產品開發流程自動化 <span>已在 Notion 正式流程頁補上 Worker tools、live test run、ISS-203 證據與 Custom Agent UI 設定 gate。</span></li></ul>
+      <ul class="evidence"><li><strong>command</strong>: npm run typecheck &amp;&amp; npm test in workers/notion-product-workflow <span>TypeScript typecheck 通過；6 個 unit tests 通過，包含 Feature Hub retest notification guard。</span></li><li><strong>command</strong>: NOTION_API_TOKEN=$NOTION_TOKEN npm run live:test <span>本地 SDK live test 因 `website-peter` integration 對 Review Issue Database 無 access 而 404，確認需要使用 GitHub Actions secret 或 workspace login。</span></li><li><strong>command</strong>: ../../.tools/ntn workers list --json <span>Notion CLI 已安裝到 repo-local `.tools`；未登入 workspace 時 workers list 回 `No workspace selected` / `unauthorized`。</span></li><li><strong>github-actions</strong>: github-docs run 26337196957 <span>Notion Worker live test 成功：建立 `ISS-203`，reroute 到 `SB-2223` / `tool-imagecompressor`，寫入 affected/routing/reopen count/resolved，最後狀態為 `Tech Fixed`。</span></li><li><strong>notion</strong>: Notion 產品開發流程自動化 <span>已在 Notion 正式流程頁補上混合 runtime ownership、Worker / Custom Agent 現況、ISS-209 trigger 證據與 ISS-210 retest notification 證據。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e5f-d043-74b8-96df-968bb7ff3ceb / ISS-209 <span>Custom Agent page-added trigger 成功呼叫 `routeReviewIssue`，寫入 `Affected Repo Execution = SB-2223`、`Repair Routing Summary`、`Last Repair Sync At`，並 comment mention Zeal Lin。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e56-c0a3-7987-8e07-70259905d6c7 / ISS-208 <span>Custom Agent page-added trigger 成功呼叫 `routeReviewIssue`，將 `ISS-208` route 到 `tool-imagecompressor`，並新增 Notion comment mention。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e67-e0ed-7f03-98b2-ec834ca1ab18 / ISS-209 <span>Custom Agent `Resolved Repo Execution` property update trigger 成功呼叫 `completeReviewIssueIfReady`，將 `ISS-209` 狀態改為 `Tech Fixed`，更新 `Last Repair Sync At`，並新增 completion comment。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e6a-a110-7589-bd30-27de1a9d33f2 / ISS-209 <span>Custom Agent status back to `Open` trigger 成功呼叫 `rerouteReviewIssue`，清空 `Resolved Repo Execution` / `Repair PR URLs`，將 `Reopen Count` 改為 `1`，並重新 comment mention Zeal Lin。</span></li><li><strong>notion-worker</strong>: Worker run 019e5e74-d26d-7559-899b-ff928b674209 / ISS-210 <span>`completeReviewIssueIfReady` 回傳 `retestNotifications=1`；`ISS-210` 變 `Tech Fixed`，`SB-2222` 收到 retest comment 並 mention Zeal Lin。</span></li><li><strong>notion</strong>: Notion skill page notion-product-architecture <span>已把公司 Notion skill 頁更新為 Worker / Agent 已部署並完成 ISS-209 / ISS-210 live trigger test 的現況。</span></li></ul>
     </section>
   </div>
-  <p class="notes">已完成 Worker-compatible tool implementation、本地測試、GitHub Actions live test、Notion 正式流程頁更新，以及 Agent 設定文件。route / reroute / complete tool 已能對真實 Notion 寫入。</p>
+  <p class="notes">已完成 Worker-compatible tool implementation、本地測試、GitHub Actions live test、Hosted Worker deploy、Worker env 設定、Custom Agent UI 設定與四條 Custom Agent / Worker live test。`ISS-209` 已驗證 page-added route、resolved update complete、status back to Open reroute；`ISS-210` 已驗證 Feature Hub retest notification。</p>
 </article>
 </div>
 </details>
@@ -2054,10 +2036,10 @@
             <strong>展開變更紀錄</strong>
             <span>查看對話中造成範圍、需求或驗證狀態改變的紀錄。</span>
           </div>
-          <span>16 筆</span>
+          <span>20 筆</span>
         </summary>
         <div class="detail-body">
-          <ul class="change-log"><li><strong>2026-05-20T18:55:00+08:00</strong> user: 正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。<span>整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。</span></li><li><strong>2026-05-20T19:10:00+08:00</strong> user: 確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。<span>新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。</span></li><li><strong>2026-05-21T10:10:00+08:00</strong> system: 開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。<span>repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。</span></li><li><strong>2026-05-21T14:45:00+08:00</strong> tool: Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。<span>Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。</span></li><li><strong>2026-05-21T15:35:00+08:00</strong> user: 要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。<span>next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。</span></li><li><strong>2026-05-21T20:05:00+08:00</strong> user: 要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。<span>增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。</span></li><li><strong>2026-05-22T14:10:00+08:00</strong> user: 要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。<span>新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。</span></li><li><strong>2026-05-22T15:01:25+08:00</strong> user: 要求先把所有流程與測試狀態寫成文件，之後先補測所有可測流程，再開始 Notion Worker 設定。<span>新增流程測試狀態文件作為 source of truth，並把 Notion Worker 設定放到可測 GitHub Actions / skill 路徑補測之後。</span></li><li><strong>2026-05-22T15:36:55+08:00</strong> tool: 完成多數已實作 GitHub Actions live flow 補測，包含 staging/prod merge、rollup、cascade、repair closed-not-merged、terminal guard、多 repo completion、Sprint fallback 與 branch prefix。<span>Notion Worker 前的主要 GitHub Actions 狀態機已以真實 Notion/GitHub side effect 驗證；剩餘 review event 需要第二個 GitHub reviewer，AI skill code repair E2E 仍未覆蓋。</span></li><li><strong>2026-05-22T18:13:23+08:00</strong> user: 要求所有已實作流程都進行 live 測，並允許真實 tag 同事來測 reviewer 事件。<span>將原本 blocked 的 GitHub review_requested / review submitted 類流程重新納入 live 測試範圍；Notion Worker 設定延後到這批可測流程全部補測完成後。</span></li><li><strong>2026-05-22T19:01:18+08:00</strong> user: 要求完成後用圖像化方式呈現所有 flow，並標註目前完成/沒完成、已測/未測的項目。<span>新增獨立 Mermaid flow map 文件，讓 runtime ownership、Repo Execution、Review Issue repair、AI skill、Worker 目標流與 legacy 移除流都有視覺化狀態標註。</span></li><li><strong>2026-05-22T22:22:50+08:00</strong> user: Zeal 已送出部分 GitHub review，要求檢查結果。<span>確認 PR #10 COMMENTED 與 PR #11 APPROVED 兩條真人 review path 已觸發成功；更新測試狀態、flow map 與剩餘 blocked 項目。</span></li><li><strong>2026-05-23T09:23:18+08:00</strong> user: Zeal 已在 PR #10 送出 Request changes，要求檢查結果。<span>確認 SB-* changes_requested path 已 live 測通過；剩餘 PR #10 approved 與 PR #11 changes_requested。</span></li><li><strong>2026-05-23T10:05:30+08:00</strong> user: Zeal 已在 PR #10 送出 Approve，要求檢查結果。<span>確認 SB-* approved path 已 live 測通過；剩餘 PR #11 changes_requested。</span></li><li><strong>2026-05-23T18:58:00+08:00</strong> user: Zeal 已在 PR #11 送出 Request changes，要求檢查結果。<span>確認 ISS-* changes_requested path 已 live 測通過；reviewer event 補測全部完成，下一步可進入 Notion Worker / Agent implementation。</span></li><li><strong>2026-05-23T23:50:00+08:00</strong> user: 要求直接開始 Notion Worker / Agent 設定，設定好後開始測試。<span>新增 Worker implementation / Agent setup / live test 作為目前焦點；若 Notion CLI 或 Custom Agent UI 需要互動授權，必須清楚標記 blocker。</span></li></ul>
+          <ul class="change-log"><li><strong>2026-05-20T18:55:00+08:00</strong> user: 正式移除 Fix Task，改由 Review Issue 直接承接修復，且通知先只用 Notion comment。<span>整個 review-fix 狀態機、回寫邏輯與 skill 都要改成 Review Issue 為中心。</span></li><li><strong>2026-05-20T19:10:00+08:00</strong> user: 確認保留 DONE/ABANDONED downward cascade、PR closed not merged 回 DEV IN PROGRESS、review_requested 回 TECH REVIEW。<span>新流程必須沿用這三個 live workflow 行為，不可在重構時遺失。</span></li><li><strong>2026-05-21T10:10:00+08:00</strong> system: 開始 Phase 1 實作，先改 reusable workflows，再視情況更新 Notion schema。<span>repo 內 workflow 可先切到新模型，但 Notion schema 是否同步更新取決於目前 connector 是否可用。</span></li><li><strong>2026-05-21T14:45:00+08:00</strong> tool: Notion connector 恢復可用，已成功更新 Review Issue 與 Sprint Backlog 的 live schema。<span>Phase 1 不再只停在 repo 內 workflow 重構，現在可以同步完成 live schema 與公司知識庫對齊。</span></li><li><strong>2026-05-21T15:35:00+08:00</strong> user: 要求把仍殘留舊 Fix Task 架構的本地文件與 Notion 正式流程頁改成現行模型。<span>next-agent handover、automation architecture、Notion 產品開發流程頁都需用 Review Issue 直修模型重寫。</span></li><li><strong>2026-05-21T20:05:00+08:00</strong> user: 要求先在本地實際驗證新流程可以讀取真實 Notion 資料庫內容，通過後把 github-docs 與 caller repo 推到 main / master 部署分支。<span>增加 live Notion schema/page fetch、本地 dry-run、部署分支檢查與跨 repo commit/push 作為完成條件。</span></li><li><strong>2026-05-22T14:10:00+08:00</strong> user: 要求使用真實 Notion 測試完整流程，並確認 Notion Agent / Worker 是否已設定完成。<span>新增 live integration test evidence；同時確認 Phase 1 仍是 GitHub Actions，Agent / Worker 目前只是後續架構方向而非已部署執行面。</span></li><li><strong>2026-05-22T15:01:25+08:00</strong> user: 要求先把所有流程與測試狀態寫成文件，之後先補測所有可測流程，再開始 Notion Worker 設定。<span>新增流程測試狀態文件作為 source of truth，並把 Notion Worker 設定放到可測 GitHub Actions / skill 路徑補測之後。</span></li><li><strong>2026-05-22T15:36:55+08:00</strong> tool: 完成多數已實作 GitHub Actions live flow 補測，包含 staging/prod merge、rollup、cascade、repair closed-not-merged、terminal guard、多 repo completion、Sprint fallback 與 branch prefix。<span>Notion Worker 前的主要 GitHub Actions 狀態機已以真實 Notion/GitHub side effect 驗證；剩餘 review event 需要第二個 GitHub reviewer，AI skill code repair E2E 仍未覆蓋。</span></li><li><strong>2026-05-22T18:13:23+08:00</strong> user: 要求所有已實作流程都進行 live 測，並允許真實 tag 同事來測 reviewer 事件。<span>將原本 blocked 的 GitHub review_requested / review submitted 類流程重新納入 live 測試範圍；Notion Worker 設定延後到這批可測流程全部補測完成後。</span></li><li><strong>2026-05-22T19:01:18+08:00</strong> user: 要求完成後用圖像化方式呈現所有 flow，並標註目前完成/沒完成、已測/未測的項目。<span>新增獨立 Mermaid flow map 文件，讓 runtime ownership、Repo Execution、Review Issue repair、AI skill、Worker 目標流與 legacy 移除流都有視覺化狀態標註。</span></li><li><strong>2026-05-22T22:22:50+08:00</strong> user: Zeal 已送出部分 GitHub review，要求檢查結果。<span>確認 PR #10 COMMENTED 與 PR #11 APPROVED 兩條真人 review path 已觸發成功；更新測試狀態、flow map 與剩餘 blocked 項目。</span></li><li><strong>2026-05-23T09:23:18+08:00</strong> user: Zeal 已在 PR #10 送出 Request changes，要求檢查結果。<span>確認 SB-* changes_requested path 已 live 測通過；剩餘 PR #10 approved 與 PR #11 changes_requested。</span></li><li><strong>2026-05-23T10:05:30+08:00</strong> user: Zeal 已在 PR #10 送出 Approve，要求檢查結果。<span>確認 SB-* approved path 已 live 測通過；剩餘 PR #11 changes_requested。</span></li><li><strong>2026-05-23T18:58:00+08:00</strong> user: Zeal 已在 PR #11 送出 Request changes，要求檢查結果。<span>確認 ISS-* changes_requested path 已 live 測通過；reviewer event 補測全部完成，下一步可進入 Notion Worker / Agent implementation。</span></li><li><strong>2026-05-23T23:50:00+08:00</strong> user: 要求直接開始 Notion Worker / Agent 設定，設定好後開始測試。<span>新增 Worker implementation / Agent setup / live test 作為目前焦點；若 Notion CLI 或 Custom Agent UI 需要互動授權，必須清楚標記 blocker。</span></li><li><strong>2026-05-25T16:45:00+08:00</strong> user: 已在 Notion UI 設定 Custom Agent instruction、Review Issue trigger、Sprint Backlog / Review Issue 存取權限與 artogo-product-workflow Worker tools。<span>T2.12 從 UI 設定 blocker 進入 live trigger test；需要用真實測試卡確認 Agent 是否能正確呼叫 Worker 並回寫 Notion。</span></li><li><strong>2026-05-25T17:15:00+08:00</strong> tool: 完成 Notion Custom Agent page-added trigger live test；`ISS-208` 與 `ISS-209` 都成功觸發 hosted Worker `routeReviewIssue`。<span>Hosted Worker 與 Custom Agent page-added routing 已可用；觀察到約 5-6 分鐘觸發延遲，reopen / resolved update 類 Custom Agent trigger 仍需單獨補測。</span></li><li><strong>2026-05-25T17:20:00+08:00</strong> tool: 完成 `ISS-209` 的 Custom Agent property-update trigger live test，包含 `completeReviewIssueIfReady` 與 `rerouteReviewIssue`。<span>Notion Worker / Agent 三條核心 trigger 已 live 測通過；剩餘風險主要是 Notion Agent trigger latency 與 Agent instruction 只能由 Notion UI 維護。</span></li><li><strong>2026-05-25T17:30:00+08:00</strong> tool: 完成 `ISS-210` 的 Feature Hub retest notification live test；`SB-2222` 收到 Worker comment 並 mention Zeal Lin。<span>Notion Worker / Custom Agent active path 已補齊 route、completion、reroute、Feature Hub retest notification；branch 建立維持 GitHub Actions owner，避免 Worker 與 Actions 形成雙 runtime race。</span></li></ul>
         </div>
       </details>
     </div>

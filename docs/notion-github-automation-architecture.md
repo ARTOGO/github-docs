@@ -206,7 +206,7 @@ The target long-term shape is:
 - Notion Worker webhooks handle GitHub -> Notion write-back.
 - Coding agents and product repo CI handle actual code edits, tests, commits, and PRs.
 
-Current Phase 1 still uses GitHub Actions for live automation. Worker / Custom Agent migration should preserve the same data model and status rules.
+Current live automation is a hybrid runtime. GitHub Actions owns branch creation, PR sync, and Feature Hub cascade. Notion Worker / Custom Agent owns Review Issue routing, reroute, completion, and retest notification. Do not add a second Worker branch creator unless GitHub Actions ownership is intentionally retired first.
 
 ## Legacy Items
 

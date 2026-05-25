@@ -1,6 +1,6 @@
 {
   "project": "github-docs Notion 自動化重構與部署",
-  "updated_at": "2026-05-24T00:00:00+08:00",
+  "updated_at": "2026-05-25T17:30:00+08:00",
   "final_goal": "完成 Phase 1 的 Review Issue 直修模型落地與部署：去除主流程中的 Fix Task / AI Dev Prompt 依賴、同步更新 live Notion schema、讓公司知識庫中的 skill / runtime 路由改指向新流程，並把 github-docs 與各 caller repo 推到實際部署分支。",
   "success_criteria": [
     "repo 內 live workflow 已切到 Review Issue 直修模型，不再依賴 Fix Task / AI Dev Prompt",
@@ -13,7 +13,7 @@
   "current_focus": {
     "feature_id": "F2",
     "task_id": "T2.12",
-    "summary": "Notion Worker-compatible tools 已實作並用真實 Notion `ISS-203` live 測通過；Hosted Worker deploy 與 Custom Agent trigger 設定仍需 Notion CLI login / UI。"
+    "summary": "Hosted Notion Worker 與 Custom Agent active path 已完成 live 測：`ISS-209` 覆蓋 route / complete / reroute，`ISS-210` 覆蓋 Feature Hub retest notification。"
   },
   "conversation_changes": [
     {
@@ -111,6 +111,30 @@
       "source": "user",
       "change": "要求直接開始 Notion Worker / Agent 設定，設定好後開始測試。",
       "impact": "新增 Worker implementation / Agent setup / live test 作為目前焦點；若 Notion CLI 或 Custom Agent UI 需要互動授權，必須清楚標記 blocker。"
+    },
+    {
+      "at": "2026-05-25T16:45:00+08:00",
+      "source": "user",
+      "change": "已在 Notion UI 設定 Custom Agent instruction、Review Issue trigger、Sprint Backlog / Review Issue 存取權限與 artogo-product-workflow Worker tools。",
+      "impact": "T2.12 從 UI 設定 blocker 進入 live trigger test；需要用真實測試卡確認 Agent 是否能正確呼叫 Worker 並回寫 Notion。"
+    },
+    {
+      "at": "2026-05-25T17:15:00+08:00",
+      "source": "tool",
+      "change": "完成 Notion Custom Agent page-added trigger live test；`ISS-208` 與 `ISS-209` 都成功觸發 hosted Worker `routeReviewIssue`。",
+      "impact": "Hosted Worker 與 Custom Agent page-added routing 已可用；觀察到約 5-6 分鐘觸發延遲，reopen / resolved update 類 Custom Agent trigger 仍需單獨補測。"
+    },
+    {
+      "at": "2026-05-25T17:20:00+08:00",
+      "source": "tool",
+      "change": "完成 `ISS-209` 的 Custom Agent property-update trigger live test，包含 `completeReviewIssueIfReady` 與 `rerouteReviewIssue`。",
+      "impact": "Notion Worker / Agent 三條核心 trigger 已 live 測通過；剩餘風險主要是 Notion Agent trigger latency 與 Agent instruction 只能由 Notion UI 維護。"
+    },
+    {
+      "at": "2026-05-25T17:30:00+08:00",
+      "source": "tool",
+      "change": "完成 `ISS-210` 的 Feature Hub retest notification live test；`SB-2222` 收到 Worker comment 並 mention Zeal Lin。",
+      "impact": "Notion Worker / Custom Agent active path 已補齊 route、completion、reroute、Feature Hub retest notification；branch 建立維持 GitHub Actions owner，避免 Worker 與 Actions 形成雙 runtime race。"
     }
   ],
   "goal_groups": [
@@ -445,7 +469,7 @@
             {
               "type": "command",
               "ref": "rg on docs/shared-skills/.github plus Notion page fetch",
-              "result": "確認 Notion Agent / Worker 目前沒有實作部署；正式 live automation 仍是 GitHub Actions，Agent / Worker 是後續 Phase 2+ 遷移方向。"
+              "result": "當時確認 Notion Agent / Worker 尚未實作部署；正式 live automation 仍是 GitHub Actions。後續 T2.12 已補上 hosted Worker / Custom Agent route、complete、reroute 與 retest notification live trigger test。"
             }
           ]
         },
@@ -654,13 +678,14 @@
           ]
         },
         {
-          "id": "T2.12",
-          "title": "實作 Notion Worker tools 與 Agent 設定指引",
-          "status": "blocked",
-          "workstream": "Worker / Agent",
-          "progress_percent": 85,
+      "id": "T2.12",
+      "title": "實作 Notion Worker tools 與 Agent 設定指引",
+      "status": "verified",
+      "workstream": "Worker / Agent",
+      "progress_percent": 100,
           "definition_of_done": [
             "Worker tools 可執行 route / reroute / complete Review Issue",
+            "Worker completion 可在 Feature Hub 全部 Review Issue 非 active 時通知 retest",
             "本地 typecheck 與 unit tests 通過",
             "用真實 Notion database 跑 live side-effect 測試",
             "確認 hosted Worker deploy 與 Custom Agent trigger 設定狀態",
@@ -669,16 +694,21 @@
           "files": [
             "/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/core.ts",
             "/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/src/index.ts",
+            "/Users/peterting/Documents/artogo/github-docs/workers/notion-product-workflow/test/core.test.ts",
             "/Users/peterting/Documents/artogo/github-docs/.github/workflows/notion-worker-live-test.yml",
-            "/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md"
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-worker-agent-setup.md",
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-test-status.md",
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-automation-flow-map.md",
+            "/Users/peterting/Documents/artogo/github-docs/docs/notion-github-automation-architecture.md",
+            "/Users/peterting/Documents/artogo/github-docs/shared-skills/notion-product-architecture/references/current-state.md"
           ],
-          "notes": "已完成 Worker-compatible tool implementation、本地測試、GitHub Actions live test、Notion 正式流程頁更新，以及 Agent 設定文件。route / reroute / complete tool 已能對真實 Notion 寫入。",
-          "blocker": "Hosted Notion Worker deploy 需要 `ntn login` workspace 授權；Custom Agent 建立與 trigger/access 設定目前需 Notion web/desktop UI，現有 MCP / API 無法直接建立 Custom Agent triggers。",
+      "notes": "已完成 Worker-compatible tool implementation、本地測試、GitHub Actions live test、Hosted Worker deploy、Worker env 設定、Custom Agent UI 設定與四條 Custom Agent / Worker live test。`ISS-209` 已驗證 page-added route、resolved update complete、status back to Open reroute；`ISS-210` 已驗證 Feature Hub retest notification。",
+      "blocker": "",
           "evidence": [
             {
               "type": "command",
               "ref": "npm run typecheck && npm test in workers/notion-product-workflow",
-              "result": "TypeScript typecheck 通過；3 個 unit tests 通過。"
+              "result": "TypeScript typecheck 通過；6 個 unit tests 通過，包含 Feature Hub retest notification guard。"
             },
             {
               "type": "command",
@@ -698,7 +728,37 @@
             {
               "type": "notion",
               "ref": "Notion 產品開發流程自動化",
-              "result": "已在 Notion 正式流程頁補上 Worker tools、live test run、ISS-203 證據與 Custom Agent UI 設定 gate。"
+              "result": "已在 Notion 正式流程頁補上混合 runtime ownership、Worker / Custom Agent 現況、ISS-209 trigger 證據與 ISS-210 retest notification 證據。"
+            },
+            {
+              "type": "notion-worker",
+              "ref": "Worker run 019e5e5f-d043-74b8-96df-968bb7ff3ceb / ISS-209",
+              "result": "Custom Agent page-added trigger 成功呼叫 `routeReviewIssue`，寫入 `Affected Repo Execution = SB-2223`、`Repair Routing Summary`、`Last Repair Sync At`，並 comment mention Zeal Lin。"
+            },
+            {
+              "type": "notion-worker",
+              "ref": "Worker run 019e5e56-c0a3-7987-8e07-70259905d6c7 / ISS-208",
+              "result": "Custom Agent page-added trigger 成功呼叫 `routeReviewIssue`，將 `ISS-208` route 到 `tool-imagecompressor`，並新增 Notion comment mention。"
+            },
+            {
+              "type": "notion-worker",
+              "ref": "Worker run 019e5e67-e0ed-7f03-98b2-ec834ca1ab18 / ISS-209",
+              "result": "Custom Agent `Resolved Repo Execution` property update trigger 成功呼叫 `completeReviewIssueIfReady`，將 `ISS-209` 狀態改為 `Tech Fixed`，更新 `Last Repair Sync At`，並新增 completion comment。"
+            },
+            {
+              "type": "notion-worker",
+              "ref": "Worker run 019e5e6a-a110-7589-bd30-27de1a9d33f2 / ISS-209",
+              "result": "Custom Agent status back to `Open` trigger 成功呼叫 `rerouteReviewIssue`，清空 `Resolved Repo Execution` / `Repair PR URLs`，將 `Reopen Count` 改為 `1`，並重新 comment mention Zeal Lin。"
+            },
+            {
+              "type": "notion-worker",
+              "ref": "Worker run 019e5e74-d26d-7559-899b-ff928b674209 / ISS-210",
+              "result": "`completeReviewIssueIfReady` 回傳 `retestNotifications=1`；`ISS-210` 變 `Tech Fixed`，`SB-2222` 收到 retest comment 並 mention Zeal Lin。"
+            },
+            {
+              "type": "notion",
+              "ref": "Notion skill page notion-product-architecture",
+              "result": "已把公司 Notion skill 頁更新為 Worker / Agent 已部署並完成 ISS-209 / ISS-210 live trigger test 的現況。"
             }
           ]
         }
@@ -719,22 +779,21 @@
     {
       "title": "通知第一版只用 Notion comment / mention",
       "status": "approved"
+    },
+    {
+      "title": "Repo Execution branch 建立維持 GitHub Actions owner，不搬進 Notion Worker",
+      "status": "approved"
     }
   ],
   "next_actions": [
-    "由 workspace member 執行 `ntn login`，部署 hosted Notion Worker",
-    "在 Notion UI 建立 `Artogo Review Issue Router` Custom Agent，掛上 Worker tools 與 Review Issue triggers",
     "若要清理測試物件，另行關閉 tool-imagecompressor PR #10 / #11 並把測試卡標記為終態",
-    "Custom Agent trigger 完成後，再用新建 Review Issue 觸發一次端到端自動 routing 測試"
+    "觀察 Notion Agent trigger latency；目前 page-added 約 5-6 分鐘，property update 約 1 分鐘內",
+    "若要正式切更多 Notion-side automation 到 Worker，先逐條補上對應 live test case 與 rollback plan"
   ],
   "not_covered": [
     {
       "item": "org-level GitHub Actions secrets visibility",
       "reason": "目前 gh token 無 org actions secrets 權限，無法列出 ARTOGO org-level NOTION_API_KEY；repo/caller workflow secret wiring 已通過靜態檢查。"
-    },
-    {
-      "item": "Notion Agent / Worker runtime",
-      "reason": "本輪驗證確認目前沒有實作部署；文件中的 Notion Custom Agent / Worker 是後續遷移設計，不是 Phase 1 live runtime。"
     }
   ]
 }
