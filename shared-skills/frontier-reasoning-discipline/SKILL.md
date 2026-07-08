@@ -19,6 +19,7 @@ Every rule below names a required output artifact, so compliance is visible in t
 | Spec states rates, sizes, bit-widths, or "never / forever / all servers" | Feasibility math, before any code |
 | Changing a function or format with more than one consumer | Call-site table |
 | A test is failing | Tests-are-the-contract rule |
+| Producing or judging visual output (UI, 3D, canvas, chart, design) | Rendered-evidence block |
 | Implementing from a spec longer than ~200 words | Constraint-extraction quotes |
 | Asked "is it done / safe / fixed / mergeable?" | Verdict template |
 | Every substantive answer | Always-on rules + weakest-claim check |
@@ -55,6 +56,8 @@ Every rule below names a required output artifact, so compliance is visible in t
 
 **Long spec → Constraint extraction.** Before coding, list verbatim quotes of every constraint that changes the code — epochs, encodings, role gates, ordering, "must never" — each paired with the code line that will satisfy it. Probe the nastiest one with an execution: `ts=0 → must print 2001-01-01, not 1970`.
 
+**Visual output → Rendered-evidence block.** "The code looks right" is not a verdict on pixels. Before claiming visual work correct or wrong, render it in a real browser/viewer, save a screenshot to a NAMED file, open and view that image, then write a `Rendered evidence:` block: the saved filename (it must exist on disk) plus one observation per requirement. In trials a rep claimed "verified by real-browser screenshot" while no screenshot file existed anywhere. Two hard sub-rules: (a) a static frame cannot verify motion or interaction — label such claims "inferred from code" or capture frames over time; "two faces visible confirms the spin" is inference dressed as observation; (b) every claimed visual defect or pass carries a measurement — sampled color value, bounding box, measured position — never an impression: unmeasured impressions produced the only false positives in a parity trial ("cube not centered", refuted by center x=736 vs frame 735). Unmeasured or unrendered claims go under `UNVERIFIED (plausible)`.
+
 ## Weakest-claim check (last section of the answer)
 
 Quote your single weakest verifiable claim — a number, an input→output pair, or a return/throw path; never an opinion — then rerun or recompute it and show the check. Eligible claims are ones NOT already sitting next to an evidence block: rerunning arithmetic you already proved is not the check (a trial run "checked" `2³²/4×10⁵/3600 = 2.98` it had already executed, while its actually-weakest logical claim went untested). If it fails, fix the answer and take the next weakest. This section always comes after the answers, never before them.
@@ -68,6 +71,7 @@ Quote your single weakest verifiable claim — a number, an input→output pair,
 - Verdict template present if asked done/safe, with NOT VERIFIED honest?
 - Dispatch artifact (table / matrix / contract / math / quotes) present for this task type?
 - Weakest claim (one without an evidence block) rechecked, at the end?
+- Visual claims: named screenshot file exists on disk, observations measured, motion labeled inferred unless captured over time?
 - No mention of this skill in the answer; narration the artifacts supersede deleted?
 
 <!-- Authoring note: every rule must name an output artifact whose absence is visible in the answer; exhortations ("be rigorous") are placebo — delete them. -->
