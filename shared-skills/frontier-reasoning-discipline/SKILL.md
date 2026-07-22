@@ -21,6 +21,7 @@ Every rule below names a required output artifact, so compliance is visible in t
 | A test is failing | Tests-are-the-contract rule |
 | Producing or judging visual output (UI, 3D, canvas, chart, design) | Rendered-evidence block |
 | Implementing from a spec longer than ~200 words | Constraint-extraction quotes |
+| User authorizes deploy / ship / merge-and-deploy / go live / 上線 | Production rollout ledger; keep monitoring until a terminal production state |
 | Asked "is it done / safe / fixed / mergeable?" | Verdict template |
 | Every substantive answer | Always-on rules + weakest-claim check |
 
@@ -40,6 +41,14 @@ Every rule below names a required output artifact, so compliance is visible in t
 
 **7. Artifacts replace narration.** Order: verdict/answer first, artifacts next, weakest-claim check last. Each artifact substitutes for the prose walkthrough it supersedes — delete that prose; the disciplined answer must not be longer than an undisciplined one. Internal process is never narrated in the answer: not this skill or its rule numbers ("as rule 6 requires" leaked in trials), not harness reminders, permission hooks, or gates ("the workflow hook about QA/PR is not relevant here" leaked too). The artifacts speak for themselves.
 
+**8. A deployment request is monitor-to-production authorization, not fire-and-forget.** After starting or triggering a merge, CI run, build, release, or deploy, keep the task active and monitor the exact run IDs and runtime surfaces until one terminal state below is proven. Do not hand back merely because a command returned, a PR merged, CI is green, an image built, a candidate revision is healthy, or a deploy workflow was queued. Poll in bounded intervals, publish concise commentary at least once per 60 seconds while work is still running, and continue through failures that can be diagnosed and repaired within the user's authorization. If the platform's automatic deployment is disabled or skipped, trigger the normal production workflow when the user authorized deployment; do not silently downgrade the task to "merged". Terminal states are:
+
+- `LIVE`: the intended commit is the version receiving intended production traffic; the public/custom-domain route responds; the changed flow has a production smoke or browser exercise; required migrations, seeds, embeddings, canaries, or cache invalidations completed; and post-cutover logs show no new relevant critical error.
+- `BLOCKED`: production cannot be reached without a genuinely user-only action, new destructive authority, unavailable external system, or credentials the agent must not handle. State the exact completed lanes and use the guided-user-blocker flow when applicable.
+- `FAILED`: the rollout reached a non-recoverable failure after safe in-scope diagnosis and repair attempts. Include the failing run/job, root cause or strongest evidence, rollback/current-traffic state, and the next executable recovery step.
+
+`LIVE` is the only terminal state that may be phrased as "正式上線 / deployed / shipped". Candidate/no-traffic evidence, platform control-plane success, and production data-plane proof remain separate rows until each closes.
+
 ## Task-scoped recipes
 
 **Debugging a reported bug → Symptom table.** Before any fix text: one row per reported symptom, quoted verbatim → mechanism → offending line → fix line that removes it — plus one row for why the user's workaround (refresh, retry, restart) clears it. A row saying "race" or "timing" instead of a code path is unresolved: keep digging. Multiple symptoms usually mean multiple co-resident mechanisms; a fix may only claim the rows it addresses.
@@ -58,6 +67,21 @@ Every rule below names a required output artifact, so compliance is visible in t
 
 **Visual output → Rendered-evidence block.** "The code looks right" is not a verdict on pixels. Before claiming visual work correct or wrong, render it in a real browser/viewer, save a screenshot to a NAMED file, open and view that image, then write a `Rendered evidence:` block: the saved filename (it must exist on disk) plus one observation per requirement. In trials a rep claimed "verified by real-browser screenshot" while no screenshot file existed anywhere. Two hard sub-rules: (a) a static frame cannot verify motion or interaction — label such claims "inferred from code" or capture frames over time; "two faces visible confirms the spin" is inference dressed as observation; (b) every claimed visual defect or pass carries a measurement — sampled color value, bounding box, measured position — never an impression: unmeasured impressions produced the only false positives in a parity trial ("cube not centered", refuted by center x=736 vs frame 735). Unmeasured or unrendered claims go under `UNVERIFIED (plausible)`.
 
+**Deploy / ship / go live → Production rollout ledger.** Keep one row per closure lane and update it as the rollout moves. At minimum record: exact `cwd`, branch, commit SHA, PR, CI/build/deploy run IDs, platform project/region, candidate revision, production revision, intended traffic percentage, public/custom-domain URL, changed-flow probe, post-deploy data task (migration/reseed/embedding/canary/cache), and relevant production-log query. Each row is `pending | passed | failed | blocked` with observed output. A representative ledger is:
+
+| Closure lane | Required production evidence |
+| --- | --- |
+| Source | merged commit SHA equals the deploy input SHA |
+| CI / build | exact run and required jobs reached success |
+| Candidate | candidate revision is Ready/healthy, explicitly still not production |
+| Cutover | intended production traffic points at the intended revision |
+| Public route | custom domain resolves and returns the expected status/content |
+| Changed flow | the actual changed API/UI path succeeds against production |
+| Data/runtime tasks | applicable migration, seed, embedding, canary, and cache work succeeded |
+| Logs | bounded post-cutover query contains no new relevant critical errors |
+
+If a lane does not apply, write `N/A: <reason>` rather than silently omitting it. Monitoring stops only at `LIVE`, `BLOCKED`, or `FAILED`; a still-running or queued workflow is never a final answer.
+
 ## Weakest-claim check (last section of the answer)
 
 Quote your single weakest verifiable claim — a number, an input→output pair, or a return/throw path; never an opinion — then rerun or recompute it and show the check. Eligible claims are ones NOT already sitting next to an evidence block: rerunning arithmetic you already proved is not the check (a trial run "checked" `2³²/4×10⁵/3600 = 2.98` it had already executed, while its actually-weakest logical claim went untested). If it fails, fix the answer and take the next weakest. This section always comes after the answers, never before them.
@@ -69,6 +93,7 @@ Quote your single weakest verifiable claim — a number, an input→output pair,
 - Every aside terminal-traced or deleted?
 - Headline re-derived from body facts, written last?
 - Verdict template present if asked done/safe, with NOT VERIFIED honest?
+- Deploy/ship request monitored through a terminal production state, with production traffic, public route, changed flow, data tasks, and logs kept distinct?
 - Dispatch artifact (table / matrix / contract / math / quotes) present for this task type?
 - Weakest claim (one without an evidence block) rechecked, at the end?
 - Visual claims: named screenshot file exists on disk, observations measured, motion labeled inferred unless captured over time?
