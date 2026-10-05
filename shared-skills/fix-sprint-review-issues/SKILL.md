@@ -1,6 +1,6 @@
 ---
 name: fix-sprint-review-issues
-description: Use when the user gives a Sprint Backlog card or Review Issue and wants the unresolved review problems to be repaired end-to-end under the new Review Issue direct-repair model.
+description: Use when the user gives a Sprint Backlog card or Review Issue and wants the unresolved review problems to be repaired end-to-end under the Review Issue direct-repair model.
 ---
 
 # Fix Sprint Review Issues
@@ -28,10 +28,10 @@ Always use these together:
 
 This skill is an execution skill, not a documentation skill.
 
-Under the current model:
+Repair model:
 
 - `Review Issue` is the only repair object
-- `Fix Task` is no longer part of the active workflow
+- `Fix Task` cards are legacy data; don't create or update them
 - impacted repos are written directly to `Review Issue -> Affected Repo Execution`
 - merged repair repos are written directly to `Review Issue -> Resolved Repo Execution`
 
@@ -48,11 +48,13 @@ The goal is:
 
 ## Execution modes
 
-### Default mode: read-only dry-run
+### Default mode: live execution
 
-Unless the user explicitly asks for live execution, the first pass must be read-only.
+When the user asks to fix or handle a Sprint card or Review Issue, run in live execution mode. Run a read-only dry-run first only when the user shares a card without asking for changes, or asks for a dry run.
 
-Read-only dry-run means:
+### Read-only dry-run
+
+A dry-run means:
 
 - read Notion only
 - do not update Notion statuses
@@ -64,7 +66,7 @@ The purpose of the dry-run is to prove that scope resolution is correct before a
 
 ### Live execution mode
 
-Only after the user explicitly approves execution may the agent:
+In live execution mode the agent may:
 
 - create or checkout repair branches
 - make code changes
@@ -179,29 +181,20 @@ If the resolved repo path does not exist locally, stop and report the exact miss
 Always resolve the branch in this order:
 
 1. current working branch if the user already supplied one and it matches the target issue
-2. derive the repair branch from `Review Issue` ID
+2. derive the repair branch from the Sprint card ID (`SB-*`)
 3. only then create the branch if it does not exist and execution requires it
 
 ### 3. Repair branch naming convention
 
-Follow the current workflow behavior, not outdated docs.
+Repair branch format, as used in backend and officialwebsite:
 
-Current repair branch format:
+- `fix/<SB card ID>_<short description>`, e.g. `fix/SB-2328_review-r2`
 
-- `fix/ISS-<issue_number>_<english_snake_case_title>`
-
-The title portion should be:
-
-- derived from `問題描述`
-- converted to short English snake_case
-- sanitized to lowercase ASCII with underscores
+Derive the short description from the card or issue summary, in lowercase ASCII.
 
 ### 4. Base branch rule
 
-If a new repair branch must be created:
-
-- prefer `staging` if it exists
-- otherwise use the repo default branch
+If a new repair branch must be created, cut it from the repo's main branch (`master` in backend and officialwebsite), not from `staging`: `staging` carries other features' unreleased commits, so a branch cut from it can't be merged to the main branch on its own. Merge the repair branch into `staging` for verification, then open its PR to the main branch.
 
 If you create the repair branch as part of the live repair flow, write back the routing / PR summary to `Review Issue` when the workflow truly requires it.
 
@@ -298,9 +291,9 @@ Also report:
 
 ## Guardrails
 
-- default first pass is read-only dry-run unless the user clearly requests live execution
+- run a read-only dry-run first only when the user shares a card without asking for changes, or asks for one
 - never treat `Stage/Admin` as a repo execution target
-- never reintroduce `Fix Task` as the execution unit
+- the execution unit is the `Review Issue`; `Fix Task` is legacy data
 - never update `Feature Hub` repo fields as though it were a `Repo Execution` card
 - do not change `Feature Hub` status just to begin analysis
 - do not treat `Affected Repo Execution` as "all child repos" unless the issue body and evidence really support that

@@ -15,9 +15,9 @@ This skill is the shared canonical source for both Codex and Claude. Local runti
 - Claude: `~/.claude/skills/figma-ui-implementation-qa/SKILL.md`
 - Claude workflow: `~/.claude/workflows/figma-compare.md` (this is the G2 diff procedure)
 
-## Root-Cause Post-Mortem — read this first
+## Why the gates exist
 
-This skill was hardened after one card (SB-2229 data center) took **~14 commits and 10+ user-caught rounds** to match Figma. The user had to act as QA, finding each difference one at a time. It was never a capability problem — it was a **verification-discipline** problem. The exact failures, so they are never repeated:
+Each gate below closes a failure mode that has made Figma parity work drag on for many rounds, with the user acting as QA for one difference at a time. These are verification-discipline failures, not capability gaps:
 
 1. **Partial measurement masquerading as verification.** Each round only the few dimensions that happened to come to mind were measured (e.g. first-card-left, search-right), then "done" was declared. The footer alone needed THREE rounds — horizontal inset, then button width, then the 20px below the button — because all of the footer's dimensions were never measured at once. One-axis-at-a-time fixing = the user becomes your QA.
 2. **Computed-style numbers gave false confidence.** Token/size matches are not visual parity. They never caught: the wrong product-icon glyph (2×2 grid vs layout-window outline), the wrong "…" orientation (vertical ⋮ vs horizontal ⋯), a raw ISO timestamp vs YYYY-MM-DD, the status text contradiction (上線中 + 尚未上線), or the icon being **clipped by an `overflow:hidden` ancestor**. Every token matched; the pixels did not.
@@ -26,14 +26,14 @@ This skill was hardened after one card (SB-2229 data center) took **~14 commits 
 5. **No full element × state × dimension contract up front.** Work was reactive, element-by-element as the user surfaced them, sometimes from an incomplete/older Figma node.
 6. **Structural traps are invisible to element-style checks.** The icon clipping (`overflow:hidden` cover wrapper) and the footer living OUTSIDE the padded `.body` were DOM-structure bugs. The element's own computed style looked correct; only measuring the *rendered position vs the expected position* exposed them.
 
-What worked every time was the **adversarial per-element high-zoom diff** (one agent per element; zoom both Figma and runtime; an independent agent re-verifies each claimed gap). Run it BEFORE you claim, not after the user catches you.
+What worked every time was the **adversarial per-element high-zoom diff** (every element compared on its own, zoomed in both Figma and runtime; an independent agent re-verifies the claimed gaps). Run it BEFORE you claim, not after the user catches you.
 
 ## Enforced Gates — hard stops
 
 These are not advice. If any gate is unmet, the work is NOT done and you may NOT say it matches.
 
 - **G1 — Dimension ledger before any "done".** For every element, fill a ledger row with EVERY dimension at once: top / right / bottom / left inset (or padding), width, height, each gap to its neighbours, the sub-glyph / icon identity, the container it lives in + any `overflow`/clip, and z-index / paint order if it overlaps a sibling. Each cell = Figma value vs runtime measured value. A missing cell = not verified.
-- **G2 — Adversarial high-zoom diff before any claim.** Run the per-element Figma-vs-runtime diff (the `figma-compare` workflow: one agent per element; `get_screenshot` at maxDimension ≥ 2048; zoom to the element; compare glyph / pixel / spacing; then an independent agent re-verifies each claimed gap). Require a single clean consolidated run with 0 confirmed gaps. Re-run it AFTER fixes — a change can regress a neighbour.
+- **G2 — Adversarial high-zoom diff before any claim.** Run the per-element Figma-vs-runtime diff (the `figma-compare` workflow: compare every element one at a time — `get_screenshot` at maxDimension ≥ 2048, zoom to the element, compare glyph / pixel / spacing. Do the comparisons yourself or split element groups across a few agents; don't spawn one agent per element. Then one independent agent re-verifies the claimed gaps). Require a single clean consolidated run with 0 confirmed gaps. Re-run it AFTER fixes — a change can regress a neighbour.
 - **G3 — Forbidden phrases.** "matches Figma", "pixel-perfect", "parity verified", "相符", "像素級", "全部命中", "13/13" are BANNED until G1 and G2 are complete and green. If you are about to type one, stop and run G2 first.
 - **G4 — Measure, never eyeball.** Never declare a match from a glance or a whole-page screenshot. Require measured pixels (`getBoundingClientRect` / computed style) AND a high-zoom crop comparison. If the user sees a difference you cannot, that means MEASURE harder — not "it's fine".
 - **G5 — Structural-trap sweep.** For each element explicitly check: clipped by an ancestor `overflow:hidden`? inside the correct padded container? correct positioning ancestor for `absolute`? correct z-index / paint order when overlapping? height inflated by `line-height` where Figma uses cap-trimmed text (`text-box-trim`)? These never appear in a single element's own computed style.
@@ -46,7 +46,7 @@ For every Figma URL or node ID:
 
 - Run Figma `get_design_context` for the exact node.
 - Run Figma `get_screenshot` for the exact node.
-- Pin ONE canonical node as the source of truth and enumerate its FULL element list before coding (the SB-2229 mess started from an older/stripped variant that lacked the "…" menu and StatusTag).
+- Pin ONE canonical node as the source of truth and enumerate its FULL element list before coding; an older or stripped variant can lack elements (menus, status tags) that the real design has.
 - Record node ID, visible text, controls, icon behavior, layout, sizing, spacing, color, typography, and interaction state.
 - If multiple Figma nodes are provided, each node must get its own contract row.
 - Do not implement from memory, nearby frames, or only one node when the user gave multiple nodes.

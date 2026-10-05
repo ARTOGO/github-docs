@@ -1,6 +1,6 @@
 ---
 name: notion-product-architecture
-description: Use when working on this repo's product-facing Notion automation, especially Sprint Backlog, Feature Hub, Repo Execution, Review Issue, and Review Log relationships under the new Review Issue direct-repair model.
+description: Use when working on this repo's product-facing Notion automation, especially Sprint Backlog, Feature Hub, Repo Execution, Review Issue, and Review Log relationships under the Review Issue direct-repair model.
 ---
 
 # Notion Product Architecture
@@ -40,12 +40,10 @@ Before making schema-sensitive changes, read:
 - When a branch or PR uses an `SB-*` identifier, the workflow may first resolve the parent Sprint card, then narrow to the matching `Repo Execution` child by repo and branch.
 - Treat `Review Log` as the review round / session record that links the review event back to Sprint Backlog and Review Issues.
 - Treat `Review Issue` as the only repair object in the active model.
-- Treat `Affected Repo Execution` and `Resolved Repo Execution` on `Review Issue` as the new repo-scope and completion truth.
+- Treat `Affected Repo Execution` and `Resolved Repo Execution` on `Review Issue` as the repo-scope and completion truth.
 - Treat `Review Fix Task` as legacy data only. Do not design new automation around it.
 
-## Active workflow model
-
-The current target model is:
+## Workflow model
 
 - `Feature Hub`
   - function-level coordination and rollup
@@ -55,12 +53,6 @@ The current target model is:
   - review-session record
 - `Review Issue`
   - repair entrypoint, impacted repo set, repair PR summary, completion state
-
-The current model is not:
-
-- `Review Issue -> Fix Task -> Fix Branch`
-
-That older shape is now historical context, not the active design target.
 
 ## Change discipline
 
