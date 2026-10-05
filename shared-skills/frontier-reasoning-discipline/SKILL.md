@@ -1,6 +1,6 @@
 ---
 name: frontier-reasoning-discipline
-description: Use when doing any non-trivial software task — debugging a reported bug, reviewing or auditing code, implementing from a spec or ticket, coding against in-context API docs, changing shared code, handling a failing test — and before stating any verdict, count, timestamp, completion claim, or the word "verified". Also use when about to answer from memory of similar codebases instead of the context in front of you. Mirrors to ~/.codex/skills/frontier-reasoning-discipline/SKILL.md.
+description: Use when doing any non-trivial software task — debugging a reported bug, reviewing or auditing code, implementing from a spec or ticket, coding against in-context API docs, changing shared code, handling a failing test — and before stating any verdict, count, timestamp, completion claim, or the word "verified". Also use when about to answer from memory of similar codebases instead of the context in front of you.
 ---
 
 # Frontier Reasoning Discipline
@@ -22,7 +22,7 @@ Every rule below names a required output artifact, so compliance is visible in t
 | Producing or judging visual output (UI, 3D, canvas, chart, design) | Rendered-evidence block |
 | Implementing from a spec longer than ~200 words | Constraint-extraction quotes |
 | User authorizes deploy / ship / merge-and-deploy / go live / 上線 | Production rollout ledger; keep monitoring until a terminal production state |
-| Asked "is it done / safe / fixed / mergeable?" | Verdict template |
+| Asked "is it done / safe / fixed / mergeable?" | Status report + verdict |
 | Every substantive answer | Always-on rules + weakest-claim check |
 
 ## Always-on rules
@@ -33,13 +33,13 @@ Every rule below names a required output artifact, so compliance is visible in t
 
 **3. Re-derive the headline from the body.** Write your opening verdict LAST. Re-read your own body facts and make every headline claim cite one that supports it. Anchor: an opening line declared two requirements "fully achievable" two paragraphs before the answer's own math proved ~3-hour capacity exhaustion; a summary table said "MET" for a requirement its own text showed collides after 68 minutes.
 
-**4. Verdict template for done/safe/fixed questions.** Open with exactly three lines: `VERIFIED:` commands run + observed outputs. `NOT VERIFIED:` checks not run — minimum rows: typecheck, tests, runtime exercise of the changed flow. `VERDICT:` safe | unsafe | unverified. "Safe/done" is available only when NOT VERIFIED is empty. Deadlines change the recommendation, never the VERDICT. A check that cannot run becomes `Blocked: <resource> — <attempted command + error>`. If the user overrides: "proceeding unverified at user direction" plus a one-line revert command. "Typecheck passed" is not "safe to merge."
+**4. Status report for done/safe/fixed questions.** Report with the five statuses: `Verified` (commands run + observed outputs), `Fixed` (root cause, fix, regression evidence), `Not covered` (checks not run — minimum rows: typecheck, tests, runtime exercise of the changed flow), `Blocked` (`<resource> — <attempted command + error>`), `Risk`. Close with one verdict line: safe | unsafe | unverified. "Safe/done" is available only when `Not covered` and `Blocked` are empty. Deadlines change the recommendation, never the verdict. If the user overrides: "proceeding unverified at user direction" plus a one-line revert command. "Typecheck passed" is not "safe to merge."
 
 **5. Impossibility answers must include the exit.** When requirements are jointly unsatisfiable, lead with the proof in numbers, then always propose the nearest feasible relaxations (wider type, coordination, weaker ordering). A bare refusal or a fail-fast `raise` with no alternative is an incomplete answer — that omission was the only failure in an otherwise-correct trial run.
 
 **6. Artifacts replace narration.** Order: verdict/answer first, artifacts next, weakest-claim check last. Each artifact substitutes for the prose walkthrough it supersedes — delete that prose; the disciplined answer must not be longer than an undisciplined one. Internal process is never narrated in the answer: not this skill or its rule numbers ("as rule 5 requires" leaked in trials), not harness reminders, permission hooks, or gates ("the workflow hook about QA/PR is not relevant here" leaked too). The artifacts speak for themselves.
 
-**7. A deployment request is monitor-to-production authorization, not fire-and-forget.** After starting or triggering a merge, CI run, build, release, or deploy, keep the task active and monitor the exact run IDs and runtime surfaces until one terminal state below is proven. Do not hand back merely because a command returned, a PR merged, CI is green, an image built, a candidate revision is healthy, or a deploy workflow was queued. Poll in bounded intervals, publish concise commentary at least once per 60 seconds while work is still running, and continue through failures that can be diagnosed and repaired within the user's authorization. If the platform's automatic deployment is disabled or skipped, trigger the normal production workflow when the user authorized deployment; do not silently downgrade the task to "merged". Terminal states are:
+**7. A deployment request is monitor-to-production authorization, not fire-and-forget.** After starting or triggering a merge, CI run, build, release, or deploy, keep the task active and monitor the exact run IDs and runtime surfaces until one terminal state below is proven. Do not hand back merely because a command returned, a PR merged, CI is green, an image built, a candidate revision is healthy, or a deploy workflow was queued. Wait on each run's completion signal instead of a fixed polling cadence, tell the user when a lane changes state, and continue through failures that can be diagnosed and repaired within the user's authorization. If the platform's automatic deployment is disabled or skipped, trigger the normal production workflow when the user authorized deployment; do not silently downgrade the task to "merged". Terminal states are:
 
 - `LIVE`: the intended commit is the version receiving intended production traffic; the public/custom-domain route responds; the changed flow has a production smoke or browser exercise; required migrations, seeds, embeddings, canaries, or cache invalidations completed; and post-cutover logs show no new relevant critical error.
 - `BLOCKED`: production cannot be reached without a genuinely user-only action, new destructive authority, unavailable external system, or credentials the agent must not handle. State the exact completed lanes and use the guided-user-blocker flow when applicable.
@@ -89,7 +89,7 @@ Quote your single weakest verifiable claim — a number, an input→output pair,
 - Every derived number shows its computation?
 - Every aside terminal-traced or deleted?
 - Headline re-derived from body facts, written last?
-- Verdict template present if asked done/safe, with NOT VERIFIED honest?
+- Status report + verdict present if asked done/safe, with `Not covered` honest?
 - Deploy/ship request monitored through a terminal production state, with production traffic, public route, changed flow, data tasks, and logs kept distinct?
 - Dispatch artifact (table / matrix / contract / math / quotes) present for this task type?
 - Weakest claim (one without an evidence block) rechecked, at the end?
